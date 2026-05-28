@@ -25,3 +25,54 @@ Built on top of Unity with a Python/FastAPI brain, SentientNPC gives NPCs:
 - **GOAP planning** — NPCs generate their own action plans to achieve goals
 - **Analytics dashboard** — a React web UI showing every NPC's memory, emotion, and relationship state in real time
 ---
+## Architecture Overview
+ 
+```
+Player Input / Game Events
+          │
+          ▼
+  ┌───────────────┐
+  │ Perception    │  ← Vision (FOV raycasting), Hearing (falloff), Event Detection
+  └──────┬────────┘
+         │
+         ▼
+  ┌───────────────┐
+  │ Memory System │  ← Short-term cache + Long-term SQLite storage
+  └──────┬────────┘
+         │
+         ├──────────────────────────────┐
+         ▼                              ▼
+  ┌───────────────┐            ┌────────────────────┐
+  │  Personality  │            │  Relationship Score │
+  │  + Emotion    │            │  + Reputation       │
+  └──────┬────────┘            └──────────┬──────────┘
+         │                               │
+         └──────────────┬────────────────┘
+                        ▼
+               ┌─────────────────┐
+               │ Decision Engine │  ← FSM → Behaviour Tree → GOAP
+               └────────┬────────┘
+                        │
+                        ▼
+               ┌─────────────────┐
+               │ Dialogue Engine │  ← Template system + LLM (Ollama)
+               └────────┬────────┘
+                        │
+                        ▼
+               ┌─────────────────┐
+               │ Action Execution│  ← NavMesh movement, animations, API sync
+               └─────────────────┘
+                        │
+                        ▼
+               ┌─────────────────┐
+               │   FastAPI +     │  ← Backend API, SQLite persistence,
+               │   SQLite        │      analytics data feed
+               └─────────────────┘
+                        │
+                        ▼
+               ┌─────────────────┐
+               │ React Dashboard │  ← NPC stats, memory logs, relationship
+               └─────────────────┘    graph, emotion state
+```
+ 
+---
