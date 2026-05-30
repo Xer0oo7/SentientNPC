@@ -1,3 +1,5 @@
+import React from "react";
+
 const emotionClasses = {
   happy: "bg-green-100 text-green-800 ring-green-200",
   angry: "bg-red-100 text-red-800 ring-red-200",

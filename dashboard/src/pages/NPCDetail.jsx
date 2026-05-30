@@ -1,3 +1,4 @@
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Chart as ChartJS,
   Filler,
@@ -7,7 +8,6 @@ import {
   RadialLinearScale,
   Tooltip,
 } from "chart.js";
-import { useEffect, useMemo, useState } from "react";
 import { Radar } from "react-chartjs-2";
 import { Link, useParams } from "react-router-dom";
 

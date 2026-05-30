@@ -1,3 +1,5 @@
+import React from "react";
+
 function reputationColor(value) {
   if (value > 25) return "bg-green-500";
   if (value < -25) return "bg-red-500";
