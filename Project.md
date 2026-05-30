@@ -5,14 +5,14 @@ The NPC's senses. Determines what the NPC can see and hear at any given moment, 
  
 **Vision**
 - Field of View: 120° cone, 20m range
-- Implemented via Physics raycasting in Unity
+- Implemented via Physics raycasting in the simulation environment
 - Detects: Player, enemies, objects of interest
 **Hearing**
 - Detects: gunshots, footsteps, explosions
 - Uses distance-based intensity falloff
 - Stores: sound type, position, intensity
 **Event Detection**
-Events auto-fire on game actions and are immediately stored in memory:
+Events auto-fire on simulation actions and are immediately stored in memory:
 | Event | Importance |
 |---|---|
 | `player_stole` | 0.8 |
@@ -223,8 +223,8 @@ A React web application that shows every NPC's internal state in real time.
  
 | Layer | Technology |
 |---|---|
-| Game Engine | Unity 2022.3 LTS |
-| Game Language | C# |
+| Simulation Engine | Unity 2022.3 LTS |
+| Scripting Language | C# |
 | AI Backend | Python 3.11 + FastAPI |
 | Database | SQLite (via SQLAlchemy) |
 | LLM Runtime | Ollama (Llama 3 / Mistral / Gemma) |
@@ -238,7 +238,7 @@ A React web application that shows every NPC's internal state in real time.
  
 ```
 SentientNPC/
-├── UnityProject/
+├── SimulationProject/
 │   └── Assets/
 │       └── _Project/
 │           ├── Scripts/
@@ -251,14 +251,13 @@ SentientNPC/
 │           │   │   ├── Emotion/        EmotionSystem.cs
 │           │   │   ├── Decision/       FSM.cs, BehaviourTree.cs, GOAP.cs
 │           │   │   └── Dialogue/       DialogueEngine.cs, LLMClient.cs
-│           │   ├── Player/             PlayerController.cs, PlayerEvents.cs
+│           │   ├── SimAgent/           SimAgentController.cs, SimAgentEvents.cs
 │           │   ├── Backend/            APIClient.cs, DatabaseSync.cs
 │           │   └── UI/                 DebugOverlay.cs, DialogueUI.cs
 │           ├── Prefabs/
 │           ├── ScriptableObjects/
 │           └── Scenes/
-│               ├── MainDemo.unity
-│               └── TestSandbox.unity
+│               └── SimSandbox.unity
 │
 ├── backend/
 │   ├── main.py                 FastAPI app entry point
@@ -318,9 +317,9 @@ ollama serve                     # starts on localhost:11434
  
 ### 4. Open in Unity
  
-- Open Unity Hub → Add project → select `UnityProject/`
-- Open scene: `Assets/_Project/Scenes/MainDemo.unity`
-- Hit Play — NPC stubs should initialise and log to Console
+- Open Unity Hub → Add project → select `SimulationProject/`
+- Open scene: `Assets/_Project/Scenes/SimSandbox.unity`
+- Hit Play — NPC agents should initialise and log to Console
 ### 5. Start the dashboard
  
 ```bash
@@ -342,19 +341,22 @@ npm run dev                      # opens on localhost:5173
 | 5 | FSM + Behaviour Tree decision engine | 🔲 Planned |
 | 6 | GOAP planner | 🔲 Planned |
 | 7 | LLM dialogue (Ollama integration) | 🔲 Planned |
-| 8 | Analytics dashboard + polish + demo video | 🔲 Planned |
+| 8 | Analytics dashboard + live WebSocket feed | 🔲 Planned |
+| 9 | Sim stress testing (multi-NPC scenarios) + demo video | 🔲 Planned |
  
 ---
  
 ## Why This Project
  
 > "Built a Unity game" is forgettable.  
-> "Built a memory-driven autonomous NPC framework with dynamic dialogue, relationship modelling, behaviour trees, GOAP planning, reputation systems, and local LLM integration" is not.
+> "Built a memory-driven autonomous NPC simulation framework with dynamic dialogue, relationship modelling, behaviour trees, GOAP planning, reputation systems, and local LLM integration" is not.
  
-SentientNPC is designed to demonstrate systems-level thinking across game AI, backend architecture, database design, and modern LLM integration — the exact combination that game AI and gameplay programming roles look for.
+SentientNPC is a pure AI simulation — no game wrapper, no gameplay loop. It is designed to demonstrate systems-level thinking across autonomous agent AI, backend architecture, database design, and modern LLM integration — the exact combination that game AI and simulation engineering roles look for.
  
 **GOAP** is used in shipped AAA titles (F.E.A.R., S.T.A.L.K.E.R.) and is a genuine signal of game AI knowledge. Most candidates have never implemented it.
  
-**Local LLM dialogue** puts this project in conversation with companies like Inworld AI, Convai, and NVIDIA ACE — the frontier of real-time AI-driven game characters.
+**Local LLM dialogue** puts this project in conversation with companies like Inworld AI, Convai, and NVIDIA ACE — the frontier of real-time AI-driven characters.
+ 
+**Simulation-first** means every module is testable, measurable, and visible through the analytics dashboard — no art, no level design, just pure AI systems running in a sandbox.
 
 ---
