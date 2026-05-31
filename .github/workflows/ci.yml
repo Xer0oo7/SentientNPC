@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: ["main","master"]
+  pull_request:
+    branches: ["main","master"]
+
+jobs:
+  backend-seed-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run seed script (sanity check)
+        run: |
+          python backend/seed.py
