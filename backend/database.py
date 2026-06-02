@@ -98,6 +98,21 @@ class DialogueLog(Base):
     npc = relationship("NPC", back_populates="dialogue_logs")
 
 
+class SimulationEvent(Base):
+    __tablename__ = "simulation_event"
+
+    id = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tick = mapped_column(Integer, nullable=False)
+    npc_id = mapped_column(Text, ForeignKey("npc.id", ondelete="CASCADE"), nullable=False)
+    event_type = mapped_column(Text, nullable=False)
+    priority = mapped_column(Integer, nullable=False)
+    action_taken = mapped_column(Text, nullable=True)
+    description = mapped_column(Text, nullable=False)
+    timestamp = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    npc = relationship("NPC")
+
+
 def get_db():
     db = SessionLocal()
     try:

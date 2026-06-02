@@ -136,3 +136,35 @@ class DialogueLogRead(BaseModel):
     npc_response: str
     prompt: str
     timestamp: datetime
+
+
+class SimEventCreate(BaseModel):
+    npc_id: str
+    event_type: str
+    description: str
+    priority: Optional[int] = Field(default=None, ge=0, le=4)
+    location: Optional[str] = None
+    importance: Optional[float] = Field(default=None, ge=0, le=1)
+
+
+class SimEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    tick: int
+    npc_id: str
+    event_type: str
+    priority: int
+    action_taken: Optional[str]
+    description: str
+    timestamp: datetime
+
+
+class SimStatusRead(BaseModel):
+    running: bool
+    tick: int
+    tick_interval_ms: int
+    queue_depths: dict[str, int]
+    stm_counts: dict[str, int]
+    ws_subscribers: int
+
