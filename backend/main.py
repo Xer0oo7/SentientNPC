@@ -1,16 +1,49 @@
-from datetime import datetime
+import logging
 import os
+from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
-import httpx
 
 from database import DialogueLog, Memory, NPC, Quest, Relationship, SessionLocal, init_db
+from event_bus import EventBus
+from memory_manager import MemoryManager
 from routers import analytics, dialogue, memory, npc, relationship
+from routers import simulation as simulation_router
+from simulation_engine import SimulationEngine
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Shared instances
+event_bus = EventBus()
+memory_mgr = MemoryManager(
+    stm_ttl=float(os.getenv("STM_TTL_SECONDS", "30")),
+    stm_capacity=int(os.getenv("STM_CAPACITY", "20")),
+)
+engine = SimulationEngine(
+    event_bus=event_bus,
+    memory_manager=memory_mgr,
+    tick_interval_ms=int(os.getenv("TICK_INTERVAL_MS", "200")),
+)
 
 
-app = FastAPI(title="SentientNPC Backend")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    init_db()
+    simulation_router.set_engine(engine, event_bus, memory_mgr)
+    logger.info("SentientNPC backend ready (tick_interval=%dms)", int(engine.tick_interval * 1000))
+    yield
+    # Shutdown
+    if engine.running:
+        await engine.stop()
+    logger.info("SentientNPC backend shutting down")
+
+
+app = FastAPI(title="SentientNPC Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,16 +54,12 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
-
-
 app.include_router(npc.router, prefix="/npc")
 app.include_router(memory.router, prefix="/memory")
 app.include_router(relationship.router, prefix="/relationship")
 app.include_router(dialogue.router, prefix="/dialogue")
 app.include_router(analytics.router, prefix="/analytics")
+app.include_router(simulation_router.router, prefix="/simulation")
 
 
 @app.get("/health")
@@ -39,6 +68,8 @@ def health():
     try:
         return {
             "status": "ok",
+            "simulation_running": engine.running,
+            "simulation_tick": engine.tick_count,
             "table_counts": {
                 "npc": db.query(func.count(NPC.id)).scalar() or 0,
                 "memory": db.query(func.count(Memory.id)).scalar() or 0,
@@ -59,6 +90,8 @@ def readiness():
     Set environment variable `CHECK_OLLAMA=1` to enable a quick Ollama POST check to
     `OLLAMA_URL` (defaults to http://localhost:11434/api/generate).
     """
+    import httpx
+
     # Check database
     db = SessionLocal()
     try:
