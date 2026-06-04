@@ -3,6 +3,7 @@ import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router-do
 
 import NPCDetail from "./pages/NPCDetail.jsx";
 import Overview from "./pages/Overview.jsx";
+import Perception from "./pages/Perception.jsx";
 import Simulation from "./pages/Simulation.jsx";
 
 function NavLink({ to, children }) {
@@ -30,6 +31,7 @@ export default function App() {
             <nav className="flex items-center gap-5">
               <NavLink to="/">Overview</NavLink>
               <NavLink to="/simulation">Simulation</NavLink>
+              <NavLink to="/perception">Perception</NavLink>
               <span className="text-sm text-stone-400">Live NPC State</span>
             </nav>
           </div>
@@ -39,6 +41,7 @@ export default function App() {
             <Route path="/" element={<Overview />} />
             <Route path="/npc/:id" element={<NPCDetail />} />
             <Route path="/simulation" element={<Simulation />} />
+            <Route path="/perception" element={<Perception />} />
           </Routes>
         </main>
       </div>
