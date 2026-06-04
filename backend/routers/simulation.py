@@ -70,7 +70,7 @@ async def stop_simulation():
 def simulation_status():
     if _engine is None:
         return {"error": "Engine not initialized"}
-    return {
+    result = {
         "running": _engine.running,
         "tick": _engine.tick_count,
         "tick_interval_ms": int(_engine.tick_interval * 1000),
@@ -78,6 +78,14 @@ def simulation_status():
         "stm_counts": _memory_manager.get_all_stm_counts() if _memory_manager else {},
         "ws_subscribers": _event_bus.subscriber_count if _event_bus else 0,
     }
+    # Add world state info if available
+    if _engine.world is not None:
+        result["world_entities"] = _engine.world.entity_count
+    if _engine.perception_engine is not None:
+        result["perception_events_recent"] = len(
+            _engine.perception_engine.get_recent_perception_events(limit=100)
+        )
+    return result
 
 
 @router.post("/inject")

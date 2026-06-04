@@ -3,10 +3,12 @@
 The engine runs as an asyncio background task inside FastAPI.
 Each tick (default 200ms):
   1. Expire old short-term memories
-  2. For each NPC, pop the highest-priority event from their queue
-  3. Process the event: create memory, determine action, shift emotion
-  4. Broadcast the processed event to all WebSocket subscribers
-  5. Persist the event to the simulation_event audit log
+  2. Run perception (vision scans for all NPCs)
+  3. For each NPC, pop the highest-priority event from their queue
+  4. Process the event: create memory, determine action, shift emotion
+  5. Propagate sound if the event produces one
+  6. Broadcast the processed event to all WebSocket subscribers
+  7. Persist the event to the simulation_event audit log
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ from event_bus import (
     SimEvent,
 )
 from memory_manager import MemoryManager
+from perception import SOUND_EVENTS
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +86,15 @@ ACTION_RULES: dict[str, list[tuple[str, float, str, str]]] = {
     "player_said_hello": [
         ("friendly", 50, "greet_warmly", "greet"),
     ],
+    # Perception event actions
+    "vision_spotted": [
+        ("aggressive", 60, "watch_closely", "glance"),
+        ("curiosity", 50, "observe", "ignore"),
+    ],
+    "sound_heard": [
+        ("curiosity", 40, "investigate_sound", "stay_alert"),
+        ("bravery", 60, "move_toward_sound", "stay_put"),
+    ],
 }
 
 # Emotion shift rules: {event_type: [(emotion, intensity_threshold)]}
@@ -95,6 +107,9 @@ EMOTION_RULES: dict[str, list[tuple[str, float]]] = {
     "player_completed_quest": [("happy", 0.6), ("excited", 0.4)],
     "give_gift": [("happy", 0.5)],
     "player_said_hello": [("happy", 0.2)],
+    # Perception emotion effects
+    "vision_spotted": [("neutral", 0.1)],
+    "sound_heard": [("fearful", 0.3)],
 }
 
 
@@ -181,6 +196,8 @@ class SimulationEngine:
         event_bus: EventBus,
         memory_manager: MemoryManager,
         tick_interval_ms: int | None = None,
+        world=None,
+        perception_engine=None,
     ) -> None:
         self.event_bus = event_bus
         self.memory_manager = memory_manager
@@ -194,6 +211,10 @@ class SimulationEngine:
 
         # Per-NPC priority queues: {npc_id: list[QueuedEvent]}  (heapq min-heap)
         self._queues: dict[str, list[QueuedEvent]] = {}
+
+        # World state and perception engine (Cycle 2)
+        self.world = world
+        self.perception_engine = perception_engine
 
     @property
     def npc_ids(self) -> list[str]:
@@ -230,7 +251,7 @@ class SimulationEngine:
     ) -> None:
         """Add an event to an NPC's priority queue."""
         if priority is None:
-            priority = EVENT_PRIORITY.get(event_type, PRIORITY_LOW)
+            priority = EVENT_PRIORITY.get(event_type, PRIORITY_IDLE)
         if importance is None:
             importance = EVENT_IMPORTANCE.get(event_type, 0.3)
 
@@ -264,6 +285,46 @@ class SimulationEngine:
         finally:
             db.close()
 
+    def _init_world_entities(self) -> None:
+        """Load NPC positions from DB into the world state."""
+        if self.world is None:
+            return
+
+        db = SessionLocal()
+        try:
+            npcs = db.query(NPCModel).all()
+            for npc in npcs:
+                self.world.place_entity(
+                    entity_id=npc.id,
+                    entity_type="npc",
+                    x=npc.pos_x,
+                    z=npc.pos_z,
+                    facing_angle=npc.facing_angle,
+                    zone=npc.zone,
+                )
+                # Load perception config
+                if self.perception_engine:
+                    self.perception_engine.set_perception_config(
+                        npc.id,
+                        vision_range=npc.vision_range,
+                        vision_fov=npc.vision_fov,
+                        hearing_range=npc.hearing_range,
+                    )
+            # Place player entity at town square
+            self.world.place_entity(
+                entity_id="player_001",
+                entity_type="player",
+                x=0.0,
+                z=0.0,
+                facing_angle=0.0,
+                zone="town_square",
+            )
+            logger.info(
+                "World initialized with %d entities", self.world.entity_count
+            )
+        finally:
+            db.close()
+
     async def start(self) -> None:
         """Start the simulation tick loop."""
         if self.running:
@@ -271,12 +332,14 @@ class SimulationEngine:
             return
 
         self._init_npc_queues()
+        self._init_world_entities()
         self.running = True
         self._task = asyncio.create_task(self._tick_loop())
         logger.info(
-            "Simulation started (tick_interval=%.0fms, npcs=%d)",
+            "Simulation started (tick_interval=%.0fms, npcs=%d, world_entities=%d)",
             self.tick_interval * 1000,
             len(self._queues),
+            self.world.entity_count if self.world else 0,
         )
 
     async def stop(self) -> None:
@@ -314,7 +377,11 @@ class SimulationEngine:
         if expired:
             logger.debug("STM expired: %s", expired)
 
-        # 2. Process one event per NPC (highest priority)
+        # 2. Run perception scans (vision detections)
+        if self.perception_engine is not None:
+            self.perception_engine.tick_perception(self.tick_count)
+
+        # 3. Process one event per NPC (highest priority)
         for npc_id in list(self._queues.keys()):
             queue = self._queues[npc_id]
             if not queue:
@@ -324,7 +391,7 @@ class SimulationEngine:
             await self._process_event(event)
 
     async def _process_event(self, event: QueuedEvent) -> None:
-        """Process a single event: memory → decision → emotion → broadcast."""
+        """Process a single event: memory → decision → emotion → sound → broadcast."""
         npc_id = event.npc_id
 
         # 1. Create memory
@@ -346,7 +413,15 @@ class SimulationEngine:
         if emotion_shift:
             _update_npc_emotion(npc_id, emotion_shift["to"])
 
-        # 4. Build and broadcast SimEvent
+        # 4. Propagate sound if this event type produces one
+        if self.perception_engine is not None and event.event_type in SOUND_EVENTS:
+            self.perception_engine.propagate_sound(
+                source_id=npc_id,
+                event_type=event.event_type,
+                current_tick=self.tick_count,
+            )
+
+        # 5. Build and broadcast SimEvent
         sim_event = SimEvent(
             tick=self.tick_count,
             npc_id=npc_id,
@@ -359,7 +434,7 @@ class SimulationEngine:
         )
         await self.event_bus.broadcast(sim_event)
 
-        # 5. Persist to simulation_event audit log
+        # 6. Persist to simulation_event audit log
         self._persist_event(sim_event)
 
         logger.debug(

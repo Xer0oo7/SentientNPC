@@ -10,9 +10,12 @@ from sqlalchemy import func
 from database import DialogueLog, Memory, NPC, Quest, Relationship, SessionLocal, init_db
 from event_bus import EventBus
 from memory_manager import MemoryManager
+from perception import PerceptionEngine
 from routers import analytics, dialogue, memory, npc, relationship
+from routers import perception as perception_router
 from routers import simulation as simulation_router
 from simulation_engine import SimulationEngine
+from world import WorldState
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,11 +26,19 @@ memory_mgr = MemoryManager(
     stm_ttl=float(os.getenv("STM_TTL_SECONDS", "30")),
     stm_capacity=int(os.getenv("STM_CAPACITY", "20")),
 )
+world = WorldState()
+perception_eng = PerceptionEngine(world=world)
+
 engine = SimulationEngine(
     event_bus=event_bus,
     memory_manager=memory_mgr,
     tick_interval_ms=int(os.getenv("TICK_INTERVAL_MS", "200")),
+    world=world,
+    perception_engine=perception_eng,
 )
+
+# Cross-wire: perception engine needs reference to sim engine for enqueuing events
+perception_eng.set_sim_engine(engine)
 
 
 @asynccontextmanager
@@ -35,6 +46,7 @@ async def lifespan(app: FastAPI):
     # Startup
     init_db()
     simulation_router.set_engine(engine, event_bus, memory_mgr)
+    perception_router.set_perception(world, perception_eng, engine)
     logger.info("SentientNPC backend ready (tick_interval=%dms)", int(engine.tick_interval * 1000))
     yield
     # Shutdown
@@ -60,6 +72,7 @@ app.include_router(relationship.router, prefix="/relationship")
 app.include_router(dialogue.router, prefix="/dialogue")
 app.include_router(analytics.router, prefix="/analytics")
 app.include_router(simulation_router.router, prefix="/simulation")
+app.include_router(perception_router.router, prefix="/perception")
 
 
 @app.get("/health")
@@ -70,6 +83,7 @@ def health():
             "status": "ok",
             "simulation_running": engine.running,
             "simulation_tick": engine.tick_count,
+            "world_entities": world.entity_count,
             "table_counts": {
                 "npc": db.query(func.count(NPC.id)).scalar() or 0,
                 "memory": db.query(func.count(Memory.id)).scalar() or 0,
