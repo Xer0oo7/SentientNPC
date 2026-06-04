@@ -20,6 +20,13 @@ class NPCCreate(BaseModel):
     personality: PersonalitySchema
     emotion: str = "neutral"
     reputation: float = Field(default=0.0, ge=-100, le=100)
+    pos_x: float = 0.0
+    pos_z: float = 0.0
+    facing_angle: float = 0.0
+    zone: Optional[str] = None
+    vision_range: float = Field(default=20.0, ge=1, le=100)
+    vision_fov: float = Field(default=120.0, ge=10, le=360)
+    hearing_range: float = Field(default=30.0, ge=1, le=100)
 
 
 class NPCRead(BaseModel):
@@ -31,6 +38,13 @@ class NPCRead(BaseModel):
     emotion: str
     reputation: float
     created_at: datetime
+    pos_x: float = 0.0
+    pos_z: float = 0.0
+    facing_angle: float = 0.0
+    zone: Optional[str] = None
+    vision_range: float = 20.0
+    vision_fov: float = 120.0
+    hearing_range: float = 30.0
 
     @field_validator("personality", mode="before")
     @classmethod
@@ -167,4 +181,26 @@ class SimStatusRead(BaseModel):
     queue_depths: dict[str, int]
     stm_counts: dict[str, int]
     ws_subscribers: int
+
+
+# ── Perception Models ─────────────────────────────────────────────────────────
+
+class PositionUpdate(BaseModel):
+    x: float
+    z: float
+    facing_angle: Optional[float] = None
+    zone: Optional[str] = None
+
+
+class SoundTrigger(BaseModel):
+    x: float
+    z: float
+    sound_type: str
+    loudness: float = Field(default=1.0, ge=0, le=1)
+
+
+class PerceptionConfigUpdate(BaseModel):
+    vision_range: Optional[float] = Field(default=None, ge=1, le=100)
+    vision_fov: Optional[float] = Field(default=None, ge=10, le=360)
+    hearing_range: Optional[float] = Field(default=None, ge=1, le=100)
 

@@ -100,6 +100,11 @@ EVENT_IMPORTANCE: dict[str, float] = {
     "ambient_observation": 0.05,
     "npc_idle_thought": 0.02,
     "schedule_check": 0.03,
+    # Perception events
+    "vision_spotted": 0.4,
+    "sound_heard": 0.5,
+    "entity_entered_zone": 0.3,
+    "entity_left_zone": 0.2,
 }
 
 # Default priority mapping for event types
@@ -116,6 +121,11 @@ EVENT_PRIORITY: dict[str, int] = {
     "ambient_observation": PRIORITY_IDLE,
     "npc_idle_thought": PRIORITY_IDLE,
     "schedule_check": PRIORITY_IDLE,
+    # Perception events
+    "vision_spotted": PRIORITY_MEDIUM,
+    "sound_heard": PRIORITY_HIGH,
+    "entity_entered_zone": PRIORITY_LOW,
+    "entity_left_zone": PRIORITY_IDLE,
 }
 
 

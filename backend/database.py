@@ -38,6 +38,17 @@ class NPC(Base):
     reputation = mapped_column(Float, nullable=False, default=0.0)
     created_at = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
+    # Spatial position (2D ground plane)
+    pos_x = mapped_column(Float, nullable=False, default=0.0)
+    pos_z = mapped_column(Float, nullable=False, default=0.0)
+    facing_angle = mapped_column(Float, nullable=False, default=0.0)
+    zone = mapped_column(Text, nullable=True, default=None)
+
+    # Perception config
+    vision_range = mapped_column(Float, nullable=False, default=20.0)
+    vision_fov = mapped_column(Float, nullable=False, default=120.0)
+    hearing_range = mapped_column(Float, nullable=False, default=30.0)
+
     memories = relationship("Memory", back_populates="npc", cascade="all, delete-orphan")
     relationships = relationship("Relationship", back_populates="npc", cascade="all, delete-orphan")
     quests = relationship("Quest", back_populates="npc", cascade="all, delete-orphan")
@@ -121,8 +132,35 @@ def get_db():
         db.close()
 
 
+# Columns added in Cycle 2 (Perception System) that need migration for existing DBs
+_NPC_NEW_COLUMNS = [
+    ("pos_x", "REAL DEFAULT 0.0"),
+    ("pos_z", "REAL DEFAULT 0.0"),
+    ("facing_angle", "REAL DEFAULT 0.0"),
+    ("zone", "TEXT DEFAULT NULL"),
+    ("vision_range", "REAL DEFAULT 20.0"),
+    ("vision_fov", "REAL DEFAULT 120.0"),
+    ("hearing_range", "REAL DEFAULT 30.0"),
+]
+
+
+def _migrate_npc_columns() -> None:
+    """Idempotent migration: add new columns to existing NPC table."""
+    import sqlite3
+    conn = sqlite3.connect(str(DATABASE_PATH))
+    cursor = conn.cursor()
+    for col_name, col_def in _NPC_NEW_COLUMNS:
+        try:
+            cursor.execute(f"ALTER TABLE npc ADD COLUMN {col_name} {col_def}")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+    conn.commit()
+    conn.close()
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    _migrate_npc_columns()
 
 
 if __name__ == "__main__":
