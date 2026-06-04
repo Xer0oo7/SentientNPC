@@ -76,3 +76,34 @@ Player Input / Game Events
 ```
  
 ---
+
+## Development Roadmap
+ 
+| Week | Module | Status |
+|---|---|---|
+| 1 | Project scaffold, folder structure, FastAPI + SQLite setup | ✅ Complete |
+| 2 | Simulation Engine + Priority Queues + Memory System + Live Events | ✅ Complete |
+| 3 | Perception System (vision FOV, hearing, spatial world, 7 NPCs) | ✅ Complete |
+| 4 | Personality + Relationship + Emotion systems | 🔲 Next |
+| 5 | FSM + Behaviour Tree decision engine | 🔲 Planned |
+| 6 | GOAP planner | 🔲 Planned |
+| 7 | LLM dialogue (Ollama integration) | 🔲 Planned |
+| 8 | Analytics dashboard + live WebSocket feed | 🔲 Planned |
+| 9 | Sim stress testing (multi-NPC scenarios) + demo video | 🔲 Planned |
+ 
+---
+ 
+## Why This Project
+ 
+> "Built a Unity game" is forgettable.  
+> "Built a memory-driven autonomous NPC simulation framework with dynamic dialogue, relationship modelling, behaviour trees, GOAP planning, reputation systems, and local LLM integration" is not.
+ 
+SentientNPC is a pure AI simulation — no game wrapper, no gameplay loop. It is designed to demonstrate systems-level thinking across autonomous agent AI, backend architecture, database design, and modern LLM integration — the exact combination that game AI and simulation engineering roles look for.
+ 
+**GOAP** is used in shipped AAA titles (F.E.A.R., S.T.A.L.K.E.R.) and is a genuine signal of game AI knowledge. Most candidates have never implemented it.
+ 
+**Local LLM dialogue** puts this project in conversation with companies like Inworld AI, Convai, and NVIDIA ACE — the frontier of real-time AI-driven characters.
+ 
+**Simulation-first** means every module is testable, measurable, and visible through the analytics dashboard — no art, no level design, just pure AI systems running in a sandbox.
+
+---

@@ -145,3 +145,98 @@ curl http://localhost:8000/simulation/status
 
 ---
 
+## Cycle 2 — Perception System (Vision + Hearing + Spatial World) ✅
+
+**Date:** 2026-06-04  
+**Status:** Complete
+
+### What was built
+
+2D spatial world model tracking entity positions and zones, NPC vision system (120° FOV cone, 20m range) with per-tick scanning, hearing system with distance-based intensity falloff, expansion from 3 to 7 NPCs placed in their village zones, new perception API endpoints, and a full dashboard perception page with an interactive 2D world map.
+
+### Backend — New Files
+
+| File | What it does |
+|------|-------------|
+| `world.py` | `WorldState` class managing 2D entity positions (x, z ground plane). `WorldEntity` dataclass with id, type, position, facing angle, zone. 6 named village zones (`guard_post`, `market_stall`, `town_square`, `tavern`, `church`, `smithy`) each with center coordinates and radius. Methods: `place_entity()`, `move_entity()`, `remove_entity()`, `get_entities_in_radius()`, `get_entities_in_zone()`, `distance()`, `is_in_fov()` (dot-product-based FOV cone check), `get_snapshot()` (full world state for dashboard). Auto-detects zone from position. |
+| `perception.py` | `PerceptionEngine` class with vision scanning and hearing propagation. **Vision**: each tick, scans all NPC entities, checks FOV cone (configurable per NPC: range 1–100m, FOV 10–360°), generates `vision_spotted` events with 5-tick cooldown between re-detections of same target. **Hearing**: event-triggered via `propagate_sound()`, calculates distance-based intensity falloff (`intensity = loudness * (1 - dist/range)`), generates `sound_heard` events for all NPCs in range. `SOUND_EVENTS` mapping: 9 event types with loudness (0.1–1.0) and sound category. Per-NPC perception config stored in memory with DB defaults. Methods: `tick_perception()`, `propagate_sound()`, `get_npc_fov_data()`, `get_nearby_entities()`, `get_recent_perception_events()`. |
+| `routers/perception.py` | 8 REST endpoints for spatial/perception control. `GET /perception/world` returns full world snapshot. `PATCH /perception/move/{id}` moves entity and syncs DB. `GET /perception/fov/{npc_id}` returns vision cone data. `GET /perception/nearby/{npc_id}` returns entities with visibility/hearing status. `POST /perception/sound` manually triggers sound propagation at position. `GET/PATCH /perception/config/{npc_id}` reads/updates perception config. `GET /perception/events` returns recent perception events. |
+
+### Backend — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `database.py` | Added 7 columns to `NPC` table: `pos_x`, `pos_z` (Float, 2D position), `facing_angle` (Float, degrees), `zone` (Text), `vision_range` (Float, default 20.0), `vision_fov` (Float, default 120.0), `hearing_range` (Float, default 30.0). Idempotent `_migrate_npc_columns()` with `ALTER TABLE` + try/except for existing DBs. Called from `init_db()`. |
+| `models.py` | Added spatial fields to `NPCCreate` and `NPCRead`: `pos_x`, `pos_z`, `facing_angle`, `zone`, `vision_range`, `vision_fov`, `hearing_range`. New schemas: `PositionUpdate` (x, z, facing_angle, zone), `SoundTrigger` (x, z, sound_type, loudness), `PerceptionConfigUpdate` (vision_range, vision_fov, hearing_range). |
+| `event_bus.py` | Added 4 perception event types: `vision_spotted` (importance 0.4, MEDIUM priority), `sound_heard` (0.5, HIGH), `entity_entered_zone` (0.3, LOW), `entity_left_zone` (0.2, IDLE). |
+| `simulation_engine.py` | Constructor now accepts `world` and `perception_engine` parameters. `_init_world_entities()` loads NPC positions and perception configs from DB into WorldState on simulation start, places player at town square. Each tick now calls `perception_engine.tick_perception()` for vision scanning. Event processing calls `propagate_sound()` for sound-producing events. Added `vision_spotted` and `sound_heard` to ACTION_RULES (personality-weighted: aggressive NPCs watch closely, curious ones investigate sounds) and EMOTION_RULES. |
+| `seed.py` | Expanded from 3 to 7 NPCs: Aldric (guard, guard_post), Hilda (merchant, market_stall), Elder Morvyn (elder, town_square), Tormund (blacksmith, smithy), Berta (innkeeper, tavern), Pip (beggar, town_square), Father Aldwin (priest, church). Each with position, facing angle, zone, customized perception config, and personality. 17 total memories, 7 relationships. Player entity at (0,0) town_square. |
+| `main.py` | Creates `WorldState` and `PerceptionEngine` instances, cross-wires perception↔simulation references. Mounts `/perception` router. `/health` now returns `world_entities` count. |
+| `routers/simulation.py` | `/simulation/status` now returns `world_entities` count and `perception_events_recent` count. |
+
+### Dashboard — New Files
+
+| File | What it does |
+|------|-------------|
+| `components/WorldMap.jsx` | Canvas-based 2D world map renderer. Draws dark background with grid, zone regions as color-coded dashed circles with labels, entity markers as colored dots (teal=NPC, rose=player) with facing direction arrows, FOV cones as radial gradient arcs for selected NPC, hearing radius as dashed circles, sound ripple animations. High-DPI (devicePixelRatio) support. Click-to-select entities, click-to-move player. Legend overlay. Responsive sizing via ResizeObserver. |
+| `components/PerceptionPanel.jsx` | Side panel showing selected NPC's perception config (vision range, FOV, hearing range) as colored stat cards, nearby entities list with distance and vision/hearing badges, and scrollable perception event feed with type-colored dots and icons (👁 vision, 👂 hearing). |
+| `pages/Perception.jsx` | Full perception page. Auto-refreshes world state (800ms), perception events (1s), and selected NPC's FOV/nearby data (1s). Sound trigger control with dropdown (combat, explosion, speech, stealth, alert, ambient) triggers sound at player position with animated ripple effect. 2-column layout: WorldMap (left) + PerceptionPanel (right). Success/error feedback toasts. Entity count summary bar. |
+
+### Dashboard — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `api/client.js` | Added 8 functions: `getWorldSnapshot()`, `moveEntity(id, x, z, facing, zone)`, `getNPCFOV(npcId)`, `getNearbyEntities(npcId)`, `triggerSound(x, z, type, loudness)`, `getPerceptionConfig(npcId)`, `updatePerceptionConfig(npcId, config)`, `getRecentPerceptionEvents(limit)`. |
+| `App.jsx` | Added `/perception` route → `Perception` page. Added "Perception" nav link. |
+
+### New API Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/perception/world` | Full world state snapshot (all entities + zones) |
+| PATCH | `/perception/move/{entity_id}` | Move entity to new position |
+| GET | `/perception/fov/{npc_id}` | Vision cone data for an NPC |
+| GET | `/perception/nearby/{npc_id}` | Entities in perception range with visibility status |
+| POST | `/perception/sound` | Trigger sound at position, propagate to NPCs |
+| GET | `/perception/config/{npc_id}` | Get NPC perception config |
+| PATCH | `/perception/config/{npc_id}` | Update NPC perception config |
+| GET | `/perception/events` | Recent perception events (newest first) |
+
+### How to test
+
+```bash
+# Terminal 1 — Backend
+cd backend
+python seed.py
+uvicorn main:app --port 8000
+
+# Terminal 2 — Dashboard
+cd dashboard
+npm run dev
+# Open http://localhost:5173/perception
+
+# Terminal 3 — Test perception
+curl -X POST http://localhost:8000/simulation/start
+
+# Check world state
+curl http://localhost:8000/perception/world
+
+# Move player near beggar (beggar faces south at 180°, so player south of beggar is visible)
+curl -X PATCH http://localhost:8000/perception/move/player_001 \
+  -H "Content-Type: application/json" \
+  -d '{"x": 5, "z": -5}'
+
+# Wait 2 seconds, then check vision events
+curl http://localhost:8000/perception/events?limit=5
+
+# Check what beggar can see
+curl http://localhost:8000/perception/nearby/beggar_01
+
+# Trigger a loud sound at market
+curl -X POST http://localhost:8000/perception/sound \
+  -H "Content-Type: application/json" \
+  -d '{"x": 30, "z": 30, "sound_type": "combat", "loudness": 1.0}'
+```
+
+---
+
