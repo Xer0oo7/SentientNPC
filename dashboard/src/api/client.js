@@ -98,4 +98,56 @@ export function createSimulationWebSocket() {
   return new WebSocket("ws://localhost:8000/simulation/ws");
 }
 
+// ── Perception ──
+
+export async function getWorldSnapshot() {
+  const response = await api.get("/perception/world");
+  return response.data;
+}
+
+export async function moveEntity(entityId, x, z, facingAngle = null, zone = null) {
+  const response = await api.patch(`/perception/move/${entityId}`, {
+    x,
+    z,
+    facing_angle: facingAngle,
+    zone,
+  });
+  return response.data;
+}
+
+export async function getNPCFOV(npcId) {
+  const response = await api.get(`/perception/fov/${npcId}`);
+  return response.data;
+}
+
+export async function getNearbyEntities(npcId) {
+  const response = await api.get(`/perception/nearby/${npcId}`);
+  return response.data;
+}
+
+export async function triggerSound(x, z, soundType, loudness = 1.0) {
+  const response = await api.post("/perception/sound", {
+    x,
+    z,
+    sound_type: soundType,
+    loudness,
+  });
+  return response.data;
+}
+
+export async function getPerceptionConfig(npcId) {
+  const response = await api.get(`/perception/config/${npcId}`);
+  return response.data;
+}
+
+export async function updatePerceptionConfig(npcId, config) {
+  const response = await api.patch(`/perception/config/${npcId}`, config);
+  return response.data;
+}
+
+export async function getRecentPerceptionEvents(limit = 50) {
+  const response = await api.get(`/perception/events?limit=${limit}`);
+  return response.data;
+}
+
 export default api;
