@@ -7,7 +7,7 @@ on:
     branches: ["main","master"]
 
 jobs:
-  backend-seed-and-check:
+  backend-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,3 +23,7 @@ jobs:
       - name: Run seed script (sanity check)
         run: |
           python backend/seed.py
+      - name: Run tests
+        working-directory: backend
+        run: |
+          python -m pytest tests/ -v
