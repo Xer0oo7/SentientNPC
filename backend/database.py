@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, create_engine, event
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Text, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, mapped_column, relationship, sessionmaker
 
 
