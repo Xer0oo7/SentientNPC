@@ -240,3 +240,79 @@ curl -X POST http://localhost:8000/perception/sound \
 
 ---
 
+## Cycle 3 — Testing Infrastructure + Bug Fixes + Hardening (Week 3) ✅
+
+**Date:** 2026-06-07  
+**Status:** Complete
+
+### What was built
+
+Comprehensive pytest test suite covering core simulation logic, CI pipeline with automated test execution, critical bug fix in `_determine_action` rule evaluation, deprecation fixes across all datetime usage, memory-efficient ring buffers, event injection validation guards, configurable CORS origins, and environment variable documentation.
+
+### Backend — New Files
+
+| File | What it does |
+|------|-------------|
+| `conftest.py` | Pytest configuration. Adds `backend/` directory to `sys.path` so tests can import backend modules (e.g., `simulation_engine`, `memory_manager`, `world`) without package installation. |
+| `tests/__init__.py` | Empty package marker enabling `python -m pytest tests/` discovery. |
+| `tests/test_core.py` | 31 unit tests across 4 test classes covering core simulation logic without requiring a running server or database. **`TestDetermineAction`** (10 tests): verifies personality-driven action selection — unknown events return `"observe"`, high/low trait thresholds produce correct actions, multi-rule evaluation doesn't short-circuit, all known event types produce non-empty results. **`TestDetermineEmotionShift`** (6 tests): verifies emotion transitions — no shift for unknown events, attack→angry, help→happy, threat→fearful, highest-intensity emotion wins, no shift if already in target state. **`TestMemoryManager`** (5 tests): verifies STM without DB — low importance goes to STM, capacity enforced (oldest dropped), TTL expiry works, multi-NPC counts correct, auto-importance lookup from `EVENT_IMPORTANCE`. **`TestWorldState`** (16 tests): verifies spatial model — place/get/remove entities, distance calculation, radius queries with exclusion, type filtering, FOV cone (directly ahead, behind, edge, just outside, out of range), move entity, auto zone detection, zone queries, snapshot structure. |
+| `.env.example` | Documents all configurable environment variables with comments: `TICK_INTERVAL_MS` (default 200), `STM_TTL_SECONDS` (default 30), `STM_CAPACITY` (default 20), `OLLAMA_URL`, `CHECK_OLLAMA`, `CORS_ORIGINS` (default `*`), `PYTHONUNBUFFERED`. |
+
+### Backend — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `simulation_engine.py` | **Bug fix**: `_determine_action()` had a premature `return action_false` inside the `for` loop, causing only the first rule to ever be evaluated. Refactored to accumulate `fallback = action_false` and return it after the loop, so all rules are evaluated in order. Added expanded docstring clarifying the evaluation semantics. |
+| `event_bus.py` | Replaced manual list slicing ring buffer (`self._event_history = self._event_history[-200:]`) with `collections.deque(maxlen=200)` for O(1) append with auto-eviction. Fixed `datetime.utcnow()` → `datetime.now(timezone.utc)` (Python 3.12 deprecation). |
+| `perception.py` | Same `deque(maxlen=100)` migration for `_recent_perception_events`, removing manual length-check-and-slice logic. |
+| `database.py` | Fixed `datetime.utcnow` → `lambda: datetime.now(timezone.utc)` in `DialogueLog.timestamp` and `SimulationEvent.timestamp` column defaults. |
+| `main.py` | Fixed `datetime.utcnow()` → `datetime.now(timezone.utc)` in `/health` response. Fixed `db.execute("SELECT 1")` → `db.execute(text("SELECT 1"))` to resolve SQLAlchemy 2.x deprecation warning. Added `CORS_ORIGINS` env var support: `os.getenv("CORS_ORIGINS", "*").split(",")` replaces hardcoded `["*"]`. |
+| `routers/simulation.py` | Added **event type validation** on `POST /simulation/inject`: rejects unknown `event_type` with error response listing valid types. Added **queue depth guard** (`MAX_QUEUE_DEPTH = 50`): rejects injection if NPC's queue already has ≥ 50 events, preventing memory exhaustion from flooding. |
+| `requirements.txt` | Added `pytest==8.2.2` and `pytest-asyncio==0.23.8`. |
+| `.gitignore` | Fixed DB ignore pattern from `backend/sentient.db` → `backend/sentient_npc.db` + added wildcard `backend/*.db`. |
+
+### Infrastructure — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `.github/workflows/ci.yml` | Renamed job from `backend-seed-and-check` → `backend-test`. Added `Run tests` step: `python -m pytest tests/ -v` with `working-directory: backend`. CI now runs seed sanity check + full test suite on push/PR to main/master. |
+| `Readme.md` | Added **Development Roadmap** table (9 weeks, Weeks 1–3 ✅, Weeks 4–9 planned). Added **Why This Project** section explaining portfolio value (GOAP, local LLM, simulation-first architecture). |
+
+### Bug Fixes
+
+| Bug | Impact | Fix |
+|-----|--------|-----|
+| `_determine_action()` short-circuit | Only the first personality rule for any event type was ever evaluated. NPCs with `aggressive < 60` but `bravery ≥ 50` for `player_stole` events would incorrectly get `alert_guard` instead of `confront`. | Replaced `return action_false` inside loop with `fallback = action_false`, returning fallback after full loop. |
+| `datetime.utcnow()` deprecation | Python 3.12+ emits `DeprecationWarning` for `datetime.utcnow()` — returns naive datetime without timezone info. | Migrated all 4 call sites to `datetime.now(timezone.utc)`. |
+| Raw SQL string in `db.execute()` | SQLAlchemy 2.x warns when passing raw strings to `execute()`. | Wrapped with `text("SELECT 1")`. |
+| Event history memory leak potential | Manual `list[-N:]` slicing creates a new list on every append, briefly doubling memory. | Replaced with `deque(maxlen=N)` for constant-memory ring buffers. |
+
+### How to test
+
+```bash
+# Terminal 1 — Run the full test suite
+cd backend
+python -m pytest tests/ -v
+
+# Expected output: 31 passed
+# Tests cover: action rules, emotion shifts, STM management, spatial queries, FOV cones
+
+# Terminal 2 — Test injection validation
+cd backend
+python seed.py
+uvicorn main:app --port 8000
+
+# Try injecting an unknown event type (should be rejected)
+curl -X POST http://localhost:8000/simulation/inject \
+  -H "Content-Type: application/json" \
+  -d '{"npc_id":"guard_01","event_type":"invalid_event","description":"test"}'
+
+# Try injecting a valid event (should succeed)
+curl -X POST http://localhost:8000/simulation/start
+curl -X POST http://localhost:8000/simulation/inject \
+  -H "Content-Type: application/json" \
+  -d '{"npc_id":"guard_01","event_type":"player_stole","description":"Player stole bread"}'
+```
+
+---
+
