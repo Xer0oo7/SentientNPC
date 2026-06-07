@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, create_engine, event
@@ -36,7 +36,7 @@ class NPC(Base):
     personality = mapped_column(Text, nullable=False)
     emotion = mapped_column(Text, nullable=False, default="neutral")
     reputation = mapped_column(Float, nullable=False, default=0.0)
-    created_at = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     # Spatial position (2D ground plane)
     pos_x = mapped_column(Float, nullable=False, default=0.0)
@@ -65,7 +65,7 @@ class Memory(Base):
     location = mapped_column(Text, nullable=True)
     importance = mapped_column(Float, nullable=False)
     is_longterm = mapped_column(Boolean, nullable=False, default=False)
-    timestamp = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    timestamp = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     npc = relationship("NPC", back_populates="memories")
 
@@ -76,7 +76,7 @@ class Relationship(Base):
     npc_id = mapped_column(Text, ForeignKey("npc.id", ondelete="CASCADE"), primary_key=True)
     player_id = mapped_column(Text, primary_key=True)
     score = mapped_column(Float, nullable=False, default=0.0)
-    updated_at = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     npc = relationship("NPC", back_populates="relationships")
 
@@ -90,7 +90,7 @@ class Quest(Base):
     reward = mapped_column(Text, nullable=False)
     difficulty = mapped_column(Float, nullable=False)
     status = mapped_column(Text, nullable=False, default="active")
-    created_at = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     npc = relationship("NPC", back_populates="quests")
 
@@ -104,7 +104,7 @@ class DialogueLog(Base):
     player_message = mapped_column(Text, nullable=False)
     npc_response = mapped_column(Text, nullable=False)
     prompt = mapped_column(Text, nullable=False)
-    timestamp = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    timestamp = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     npc = relationship("NPC", back_populates="dialogue_logs")
 
@@ -119,7 +119,7 @@ class SimulationEvent(Base):
     priority = mapped_column(Integer, nullable=False)
     action_taken = mapped_column(Text, nullable=True)
     description = mapped_column(Text, nullable=False)
-    timestamp = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    timestamp = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     npc = relationship("NPC")
 

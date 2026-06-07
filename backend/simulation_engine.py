@@ -130,18 +130,24 @@ def _get_npc_personality(npc_id: str) -> dict[str, float]:
 def _determine_action(
     event_type: str, personality: dict[str, float]
 ) -> str:
-    """Pick an action based on event type and NPC personality traits."""
+    """Pick an action based on event type and NPC personality traits.
+
+    Evaluates rules in order. The first rule whose trait meets the threshold
+    returns action_true. If no rule's threshold is met, the last rule's
+    action_false is returned as the fallback.
+    """
     rules = ACTION_RULES.get(event_type)
     if not rules:
         return "observe"
 
+    fallback = "observe"
     for trait, threshold, action_true, action_false in rules:
         trait_value = personality.get(trait, 50)
         if trait_value >= threshold:
             return action_true
-        return action_false
+        fallback = action_false
 
-    return "observe"
+    return fallback
 
 
 def _determine_emotion_shift(

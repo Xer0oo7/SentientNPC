@@ -1,11 +1,11 @@
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func
+from sqlalchemy import func, text
 
 from database import DialogueLog, Memory, NPC, Quest, Relationship, SessionLocal, init_db
 from event_bus import EventBus
@@ -91,7 +91,7 @@ def health():
                 "quest": db.query(func.count(Quest.id)).scalar() or 0,
                 "dialogue_log": db.query(func.count(DialogueLog.id)).scalar() or 0,
             },
-            "server_timestamp": datetime.utcnow().isoformat(),
+            "server_timestamp": datetime.now(timezone.utc).isoformat(),
         }
     finally:
         db.close()
@@ -110,7 +110,7 @@ def readiness():
     db = SessionLocal()
     try:
         # lightweight DB check
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
     except Exception as e:
         db.close()
         return {"ready": False, "db_error": str(e)}

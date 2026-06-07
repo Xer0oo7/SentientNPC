@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import WebSocket
@@ -46,7 +46,7 @@ class SimEvent:
         timestamp: datetime | None = None,
     ):
         self.tick = tick
-        self.timestamp = timestamp or datetime.utcnow()
+        self.timestamp = timestamp or datetime.now(timezone.utc)
         self.npc_id = npc_id
         self.event_type = event_type
         self.priority = priority
