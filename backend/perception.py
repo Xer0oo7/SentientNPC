@@ -12,6 +12,7 @@ The PerceptionEngine runs as part of the simulation tick loop:
 from __future__ import annotations
 
 import logging
+from collections import deque
 from typing import Any, Optional, TYPE_CHECKING
 
 from world import WorldState
@@ -59,8 +60,7 @@ class PerceptionEngine:
         self._perception_configs: dict[str, dict[str, float]] = {}
 
         # Recent perception events for dashboard display
-        self._recent_perception_events: list[dict[str, Any]] = []
-        self._max_perception_history = 100
+        self._recent_perception_events: deque[dict[str, Any]] = deque(maxlen=100)
 
     def set_sim_engine(self, engine: SimulationEngine) -> None:
         """Set reference to simulation engine (called after both are created)."""
@@ -312,7 +312,3 @@ class PerceptionEngine:
     def _record_perception_event(self, event: dict[str, Any]) -> None:
         """Store perception event in ring buffer for dashboard display."""
         self._recent_perception_events.append(event)
-        if len(self._recent_perception_events) > self._max_perception_history:
-            self._recent_perception_events = self._recent_perception_events[
-                -self._max_perception_history:
-            ]

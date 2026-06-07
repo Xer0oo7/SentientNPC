@@ -87,11 +87,31 @@ def simulation_status():
         )
     return result
 
+MAX_QUEUE_DEPTH = 50  # Reject injection if queue is already this deep
+
 
 @router.post("/inject")
 def inject_event(payload: InjectEventPayload):
     if _engine is None:
         return {"error": "Engine not initialized"}
+
+    # Validate event type against known types
+    known_types = set(EVENT_PRIORITY.keys())
+    if payload.event_type not in known_types:
+        return {
+            "error": f"Unknown event_type '{payload.event_type}'",
+            "valid_types": sorted(known_types),
+        }
+
+    # Guard against queue flooding
+    current_depth = len(_engine._queues.get(payload.npc_id, []))
+    if current_depth >= MAX_QUEUE_DEPTH:
+        return {
+            "error": "Queue depth limit reached",
+            "npc_id": payload.npc_id,
+            "queue_depth": current_depth,
+            "max_depth": MAX_QUEUE_DEPTH,
+        }
 
     priority = payload.priority
     if priority is None:

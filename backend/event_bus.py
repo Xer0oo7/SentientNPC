@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections import deque
 from datetime import datetime, timezone
 from typing import Any
 
@@ -135,8 +136,7 @@ class EventBus:
     def __init__(self) -> None:
         self._subscribers: set[WebSocket] = set()
         self._lock = asyncio.Lock()
-        self._event_history: list[dict[str, Any]] = []
-        self._max_history = 200
+        self._event_history: deque[dict[str, Any]] = deque(maxlen=200)
 
     @property
     def subscriber_count(self) -> int:
@@ -161,10 +161,8 @@ class EventBus:
         """Send event to all subscribers. Remove any that fail."""
         payload = json.dumps(event.to_dict())
 
-        # Store in history ring buffer
+        # Store in history ring buffer (deque auto-evicts oldest)
         self._event_history.append(event.to_dict())
-        if len(self._event_history) > self._max_history:
-            self._event_history = self._event_history[-self._max_history:]
 
         dead: list[WebSocket] = []
         async with self._lock:
