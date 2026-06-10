@@ -35,6 +35,7 @@ class NPC(Base):
     name = mapped_column(Text, nullable=False)
     personality = mapped_column(Text, nullable=False)
     emotion = mapped_column(Text, nullable=False, default="neutral")
+    fsm_state = mapped_column(Text, nullable=False, default="idle")
     reputation = mapped_column(Float, nullable=False, default=0.0)
     created_at = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
@@ -118,6 +119,7 @@ class SimulationEvent(Base):
     event_type = mapped_column(Text, nullable=False)
     priority = mapped_column(Integer, nullable=False)
     action_taken = mapped_column(Text, nullable=True)
+    fsm_state = mapped_column(Text, nullable=False, default="idle")
     description = mapped_column(Text, nullable=False)
     timestamp = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
@@ -138,9 +140,15 @@ _NPC_NEW_COLUMNS = [
     ("pos_z", "REAL DEFAULT 0.0"),
     ("facing_angle", "REAL DEFAULT 0.0"),
     ("zone", "TEXT DEFAULT NULL"),
+    ("fsm_state", "TEXT DEFAULT 'idle'"),
     ("vision_range", "REAL DEFAULT 20.0"),
     ("vision_fov", "REAL DEFAULT 120.0"),
     ("hearing_range", "REAL DEFAULT 30.0"),
+]
+
+
+_SIMULATION_EVENT_NEW_COLUMNS = [
+    ("fsm_state", "TEXT DEFAULT 'idle'"),
 ]
 
 
@@ -158,9 +166,25 @@ def _migrate_npc_columns() -> None:
     conn.close()
 
 
+def _migrate_simulation_event_columns() -> None:
+    """Idempotent migration: add new columns to existing simulation_event table."""
+    import sqlite3
+
+    conn = sqlite3.connect(str(DATABASE_PATH))
+    cursor = conn.cursor()
+    for col_name, col_def in _SIMULATION_EVENT_NEW_COLUMNS:
+        try:
+            cursor.execute(f"ALTER TABLE simulation_event ADD COLUMN {col_name} {col_def}")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+    conn.commit()
+    conn.close()
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     _migrate_npc_columns()
+    _migrate_simulation_event_columns()
 
 
 if __name__ == "__main__":

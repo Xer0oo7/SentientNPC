@@ -16,10 +16,14 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
+from database import NPC, SimulationEvent, get_db
 from event_bus import EVENT_PRIORITY, PRIORITY_LOW
+from fsm import FSM_STATES
+from models import DecisionStateRead
 
 router = APIRouter(tags=["simulation"])
 
@@ -88,6 +92,38 @@ def simulation_status():
     return result
 
 MAX_QUEUE_DEPTH = 50  # Reject injection if queue is already this deep
+
+
+@router.get("/state/{npc_id}", response_model=DecisionStateRead)
+def decision_state(npc_id: str, db: Session = Depends(get_db)):
+    npc = db.get(NPC, npc_id)
+    if not npc:
+        return {
+            "npc_id": npc_id,
+            "fsm_state": "idle",
+            "emotion": "neutral",
+            "last_event_type": None,
+            "last_action_taken": None,
+            "last_tick": None,
+            "available_states": list(FSM_STATES),
+        }
+
+    latest_event = (
+        db.query(SimulationEvent)
+        .filter(SimulationEvent.npc_id == npc_id)
+        .order_by(SimulationEvent.tick.desc(), SimulationEvent.timestamp.desc())
+        .first()
+    )
+
+    return {
+        "npc_id": npc.id,
+        "fsm_state": npc.fsm_state,
+        "emotion": npc.emotion,
+        "last_event_type": latest_event.event_type if latest_event else None,
+        "last_action_taken": latest_event.action_taken if latest_event else None,
+        "last_tick": latest_event.tick if latest_event else None,
+        "available_states": list(FSM_STATES),
+    }
 
 
 @router.post("/inject")

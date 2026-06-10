@@ -293,7 +293,10 @@ class PerceptionEngine:
 
     def get_recent_perception_events(self, limit: int = 50) -> list[dict[str, Any]]:
         """Return recent perception events (newest first)."""
-        return list(reversed(self._recent_perception_events[-limit:]))
+        events = list(self._recent_perception_events)
+        if limit <= 0:
+            return []
+        return list(reversed(events[-limit:]))
 
     def _is_on_cooldown(self, npc_id: str, target_id: str, current_tick: int) -> bool:
         """Check if vision detection is on cooldown for this NPC-target pair."""

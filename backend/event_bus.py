@@ -29,6 +29,7 @@ class SimEvent:
         "event_type",
         "priority",
         "action_taken",
+        "fsm_state",
         "memory_created",
         "emotion_shift",
         "description",
@@ -42,6 +43,7 @@ class SimEvent:
         priority: int,
         description: str,
         action_taken: str | None = None,
+        fsm_state: str = "idle",
         memory_created: bool = False,
         emotion_shift: dict[str, str] | None = None,
         timestamp: datetime | None = None,
@@ -52,6 +54,7 @@ class SimEvent:
         self.event_type = event_type
         self.priority = priority
         self.action_taken = action_taken
+        self.fsm_state = fsm_state
         self.memory_created = memory_created
         self.emotion_shift = emotion_shift
         self.description = description
@@ -65,6 +68,7 @@ class SimEvent:
             "priority": self.priority,
             "priority_label": PRIORITY_LABELS.get(self.priority, "unknown"),
             "action_taken": self.action_taken,
+            "fsm_state": self.fsm_state,
             "memory_created": self.memory_created,
             "emotion_shift": self.emotion_shift,
             "description": self.description,

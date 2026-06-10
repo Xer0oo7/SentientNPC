@@ -258,6 +258,56 @@ Comprehensive pytest test suite covering core simulation logic, CI pipeline with
 | `tests/test_core.py` | 31 unit tests across 4 test classes covering core simulation logic without requiring a running server or database. **`TestDetermineAction`** (10 tests): verifies personality-driven action selection — unknown events return `"observe"`, high/low trait thresholds produce correct actions, multi-rule evaluation doesn't short-circuit, all known event types produce non-empty results. **`TestDetermineEmotionShift`** (6 tests): verifies emotion transitions — no shift for unknown events, attack→angry, help→happy, threat→fearful, highest-intensity emotion wins, no shift if already in target state. **`TestMemoryManager`** (5 tests): verifies STM without DB — low importance goes to STM, capacity enforced (oldest dropped), TTL expiry works, multi-NPC counts correct, auto-importance lookup from `EVENT_IMPORTANCE`. **`TestWorldState`** (16 tests): verifies spatial model — place/get/remove entities, distance calculation, radius queries with exclusion, type filtering, FOV cone (directly ahead, behind, edge, just outside, out of range), move entity, auto zone detection, zone queries, snapshot structure. |
 | `.env.example` | Documents all configurable environment variables with comments: `TICK_INTERVAL_MS` (default 200), `STM_TTL_SECONDS` (default 30), `STM_CAPACITY` (default 20), `OLLAMA_URL`, `CHECK_OLLAMA`, `CORS_ORIGINS` (default `*`), `PYTHONUNBUFFERED`. |
 
+---
+
+## Cycle 4 — FSM Foundation + Decision Visibility (Week 4) ✅
+
+**Date:** 2026-06-10  
+**Status:** Complete
+
+### What was built
+
+Persistent finite-state machine support for each NPC, deterministic state transitions driven by event rules, a decision-state API for inspection, and dashboard visibility for the current FSM state and latest processed decision.
+
+### Backend — New Files
+
+| File | What it does |
+|------|-------------|
+| `fsm.py` | Defines the NPC FSM state set, initial-state selection, deterministic transition rules, and state-based fallback actions. |
+| `tests/test_fsm.py` | Unit tests for state normalization, initial-state derivation, event-driven transitions, and state-driven action fallbacks. |
+
+### Backend — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `database.py` | Added persistent `fsm_state` storage to `NPC` and `simulation_event`, plus idempotent migration helpers for existing SQLite databases. |
+| `models.py` | Added `fsm_state` to NPC create/read schemas, `fsm_state` to simulation event read schema, and `DecisionStateRead` for the new inspection endpoint. |
+| `seed.py` | Seeds each NPC with an initial FSM state derived from zone and emotion. |
+| `simulation_engine.py` | Loads NPC FSM state on each processed event, updates state transitions per tick, and includes the resulting state in processed simulation events. |
+| `routers/simulation.py` | Added `GET /simulation/state/{npc_id}` to expose the current FSM state, last processed event, and available state set. |
+| `routers/analytics.py` | Includes `fsm_state` and last decision metadata in NPC analytics and overview responses. |
+| `routers/npc.py` | New NPCs are created with a sensible initial FSM state when one is not provided. |
+| `perception.py` | Fixed recent perception history access so `/simulation/status` can safely report perception event counts. |
+
+### Dashboard — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `src/pages/Overview.jsx` | Shows each NPC's current FSM state badge on the overview cards. |
+| `src/pages/NPCDetail.jsx` | Shows the current FSM state and latest processed decision details in the NPC detail view. |
+
+### New API Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/simulation/state/{npc_id}` | Returns the current FSM state, emotion, and latest processed decision for one NPC. |
+
+### Validation
+
+- FSM unit smoke checks passed.
+- Dashboard production build passed.
+- Backend `/simulation/status` was hardened to avoid crashing on perception history access.
+
 ### Backend — Modified Files
 
 | File | What changed |
