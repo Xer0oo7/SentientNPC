@@ -58,6 +58,10 @@ export default function Overview() {
               <EmotionBadge emotion={npc.emotion} />
             </div>
 
+            <div className="mt-3 inline-flex rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
+              {npc.fsm_state}
+            </div>
+
             <div className="mt-5">
               <ReputationBar value={npc.reputation} />
             </div>

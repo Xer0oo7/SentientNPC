@@ -102,7 +102,12 @@ export default function NPCDetail() {
           <h1 className="text-2xl font-semibold text-stone-950">{npc.name}</h1>
           <p className="mt-1 text-sm text-stone-500">{npc.id}</p>
         </div>
-        <EmotionBadge emotion={npc.emotion} />
+        <div className="flex flex-col items-end gap-2">
+          <EmotionBadge emotion={npc.emotion} />
+          <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
+            {npc.fsm_state}
+          </span>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
@@ -126,6 +131,10 @@ export default function NPCDetail() {
               </div>
             </div>
             <div className="rounded-md bg-stone-50 p-3">
+              <div className="text-xs text-stone-500">FSM State</div>
+              <div className="mt-1 text-xl font-semibold text-stone-950">{npc.fsm_state}</div>
+            </div>
+            <div className="rounded-md bg-stone-50 p-3">
               <div className="text-xs text-stone-500">Memories</div>
               <div className="mt-1 text-xl font-semibold text-stone-950">{npc.memories.length}</div>
             </div>
@@ -133,6 +142,12 @@ export default function NPCDetail() {
               <div className="text-xs text-stone-500">Recent Dialogue</div>
               <div className="mt-1 text-xl font-semibold text-stone-950">{npc.recent_dialogue_count}</div>
             </div>
+          </div>
+
+          <div className="mt-4 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
+            <div className="text-xs uppercase tracking-wide text-stone-500">Latest decision</div>
+            <div className="mt-1 font-medium text-stone-950">{npc.last_event_type || "No processed event yet"}</div>
+            <div className="mt-1 text-stone-600">{npc.last_action_taken || "-"}</div>
           </div>
         </div>
       </div>

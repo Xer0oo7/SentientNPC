@@ -1,6 +1,7 @@
 import json
 
 from database import DialogueLog, Memory, NPC, Quest, Relationship, SimulationEvent, SessionLocal, init_db
+from fsm import derive_initial_state
 
 
 NPCS = [
@@ -219,6 +220,7 @@ def seed():
                 name=item["name"],
                 personality=json.dumps(item["personality"]),
                 emotion=item["emotion"],
+                fsm_state=derive_initial_state(item["zone"], item["emotion"]),
                 reputation=item["reputation"],
                 pos_x=item["pos_x"],
                 pos_z=item["pos_z"],

@@ -19,6 +19,7 @@ class NPCCreate(BaseModel):
     name: str
     personality: PersonalitySchema
     emotion: str = "neutral"
+    fsm_state: Optional[str] = None
     reputation: float = Field(default=0.0, ge=-100, le=100)
     pos_x: float = 0.0
     pos_z: float = 0.0
@@ -36,6 +37,7 @@ class NPCRead(BaseModel):
     name: str
     personality: PersonalitySchema
     emotion: str
+    fsm_state: str
     reputation: float
     created_at: datetime
     pos_x: float = 0.0
@@ -170,6 +172,7 @@ class SimEventRead(BaseModel):
     event_type: str
     priority: int
     action_taken: Optional[str]
+    fsm_state: str
     description: str
     timestamp: datetime
 
@@ -181,6 +184,16 @@ class SimStatusRead(BaseModel):
     queue_depths: dict[str, int]
     stm_counts: dict[str, int]
     ws_subscribers: int
+
+
+class DecisionStateRead(BaseModel):
+    npc_id: str
+    fsm_state: str
+    emotion: str
+    last_event_type: Optional[str] = None
+    last_action_taken: Optional[str] = None
+    last_tick: Optional[int] = None
+    available_states: list[str]
 
 
 # ── Perception Models ─────────────────────────────────────────────────────────

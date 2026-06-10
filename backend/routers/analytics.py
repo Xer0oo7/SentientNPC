@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from database import DialogueLog, Memory, NPC, Relationship, get_db
+from database import DialogueLog, Memory, NPC, Relationship, SimulationEvent, get_db
 from models import DialogueLogRead, MemoryRead, RelationshipRead
 from routers.relationship import relationship_label
 
@@ -20,6 +20,7 @@ def analytics_overview(db: Session = Depends(get_db)):
             "id": npc.id,
             "name": npc.name,
             "emotion": npc.emotion,
+            "fsm_state": npc.fsm_state,
             "reputation": npc.reputation,
             "memory_count": db.query(func.count(Memory.id)).filter(Memory.npc_id == npc.id).scalar() or 0,
             "relationship_count": db.query(func.count(Relationship.player_id)).filter(Relationship.npc_id == npc.id).scalar()
@@ -50,6 +51,7 @@ def npc_analytics(npc_id: str, db: Session = Depends(get_db)):
         "name": npc.name,
         "personality": json.loads(npc.personality),
         "emotion": npc.emotion,
+        "fsm_state": npc.fsm_state,
         "reputation": npc.reputation,
         "memories": [MemoryRead.model_validate(memory).model_dump() for memory in memories],
         "relationships": [
@@ -58,4 +60,18 @@ def npc_analytics(npc_id: str, db: Session = Depends(get_db)):
         ],
         "recent_dialogue_count": len(recent_dialogue),
         "recent_dialogue": [DialogueLogRead.model_validate(log).model_dump() for log in recent_dialogue],
+        "last_event_type": (
+            db.query(SimulationEvent.event_type)
+            .filter(SimulationEvent.npc_id == npc_id)
+            .order_by(SimulationEvent.tick.desc(), SimulationEvent.timestamp.desc())
+            .limit(1)
+            .scalar()
+        ),
+        "last_action_taken": (
+            db.query(SimulationEvent.action_taken)
+            .filter(SimulationEvent.npc_id == npc_id)
+            .order_by(SimulationEvent.tick.desc(), SimulationEvent.timestamp.desc())
+            .limit(1)
+            .scalar()
+        ),
     }

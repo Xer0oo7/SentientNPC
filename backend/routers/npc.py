@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import NPC, get_db
+from fsm import derive_initial_state, normalize_state
 from models import EmotionUpdate, NPCCreate, NPCRead, ReputationDelta
 
 
@@ -30,8 +31,16 @@ def create_npc(payload: NPCCreate, db: Session = Depends(get_db)):
         name=payload.name,
         personality=payload.personality.model_dump_json(),
         emotion=payload.emotion,
+        fsm_state=normalize_state(payload.fsm_state) if payload.fsm_state else derive_initial_state(payload.zone, payload.emotion),
         reputation=clamp(payload.reputation),
         created_at=datetime.utcnow(),
+        pos_x=payload.pos_x,
+        pos_z=payload.pos_z,
+        facing_angle=payload.facing_angle,
+        zone=payload.zone,
+        vision_range=payload.vision_range,
+        vision_fov=payload.vision_fov,
+        hearing_range=payload.hearing_range,
     )
     db.add(npc)
     db.commit()

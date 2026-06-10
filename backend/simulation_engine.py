@@ -33,6 +33,7 @@ from event_bus import (
     EventBus,
     SimEvent,
 )
+from fsm import normalize_state, resolve_state_action, transition_state
 from memory_manager import MemoryManager
 from perception import SOUND_EVENTS
 
@@ -190,6 +191,30 @@ def _get_npc_emotion(npc_id: str) -> str:
     try:
         npc = db.get(NPCModel, npc_id)
         return npc.emotion if npc else "neutral"
+    finally:
+        db.close()
+
+
+def _get_npc_fsm_state(npc_id: str) -> str:
+    """Get an NPC's current FSM state from the database."""
+    db = SessionLocal()
+    try:
+        npc = db.get(NPCModel, npc_id)
+        return normalize_state(npc.fsm_state if npc else None)
+    finally:
+        db.close()
+
+
+def _update_npc_fsm_state(npc_id: str, new_state: str) -> None:
+    """Update an NPC's FSM state in the database."""
+    db = SessionLocal()
+    try:
+        npc = db.get(NPCModel, npc_id)
+        if npc:
+            npc.fsm_state = normalize_state(new_state)
+            db.commit()
+    except Exception:
+        db.rollback()
     finally:
         db.close()
 
@@ -411,10 +436,18 @@ class SimulationEngine:
 
         # 2. Determine action based on personality
         personality = _get_npc_personality(npc_id)
+        current_state = _get_npc_fsm_state(npc_id)
+        current_emotion = _get_npc_emotion(npc_id)
+        transition = transition_state(current_state, event.event_type, personality, current_emotion)
+        next_state = transition.next_state
+        if next_state != current_state:
+            _update_npc_fsm_state(npc_id, next_state)
+
         action = _determine_action(event.event_type, personality)
+        if action == "observe":
+            action = resolve_state_action(next_state, action)
 
         # 3. Check for emotion shift
-        current_emotion = _get_npc_emotion(npc_id)
         emotion_shift = _determine_emotion_shift(event.event_type, current_emotion)
         if emotion_shift:
             _update_npc_emotion(npc_id, emotion_shift["to"])
@@ -435,6 +468,7 @@ class SimulationEngine:
             priority=event.priority,
             description=event.description,
             action_taken=action,
+            fsm_state=next_state,
             memory_created=memory_created,
             emotion_shift=emotion_shift,
         )
@@ -463,6 +497,7 @@ class SimulationEngine:
                 event_type=event.event_type,
                 priority=event.priority,
                 action_taken=event.action_taken,
+                fsm_state=event.fsm_state,
                 description=event.description,
                 timestamp=event.timestamp,
             )
