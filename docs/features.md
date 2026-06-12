@@ -366,3 +366,224 @@ curl -X POST http://localhost:8000/simulation/inject \
 
 ---
 
+## Cycle 5 — Conversation UI + Ollama Integration + Docker Hardening (Week 5) ✅
+
+**Date:** 2026-06-12  
+**Status:** Complete
+
+### What was built
+
+Full NPC conversation interface in the React dashboard powered by a local LLM (Phi-3 via Ollama), Docker configuration hardened to run both backend and dashboard with a single command, auto-seeding on first boot, and Ollama environment variable fix for Docker networking.
+
+### Backend — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `routers/dialogue.py` | **Bug fix**: `OLLAMA_URL` was hardcoded to `http://localhost:11434/api/generate`, which fails inside Docker containers (localhost points to the container itself, not the host). Now reads from `os.getenv("OLLAMA_URL")` with localhost as fallback for native development. Changed default model from `llama3` to `phi3` (Microsoft Phi-3 Mini 3.8B) — smaller, faster, lower VRAM usage while maintaining quality for short NPC dialogue. Model is also configurable via `OLLAMA_MODEL` env var. |
+| `main.py` | Added auto-seeding: on startup, checks if the NPC table is empty and automatically runs `seed.py` to populate the database with 7 NPCs, 17 memories, and 7 relationships. Prevents data loss on subsequent restarts by only seeding when the database is completely empty. |
+
+### Dashboard — New Files
+
+| File | What it does |
+|------|-------------|
+| `src/pages/Conversation.jsx` | Full chat interface page. **NPC selector** dropdown populated from `GET /npc/`. **Chat window** with speech bubbles: player messages (teal, right-aligned, rounded) and NPC responses (gray, left-aligned) with NPC name and emotion-colored dot indicator. **Typing indicator** with animated bouncing dots while waiting for LLM response. **Message input** with send button, disabled state during generation. **NPC info sidebar** showing: name, ID, emotion badge, FSM state badge, personality radar chart (Chart.js), reputation score, and current zone/position. Loads dialogue history from `GET /dialogue/{npc_id}/history` on NPC selection. Sends messages via `POST /dialogue/{npc_id}`. Optimistic UI update for player messages. Auto-scrolls to newest message. |
+| `Dockerfile` | New Dockerfile for the dashboard service. Uses `node:18-alpine` base image. Copies `package.json` first for layer caching, runs `npm install`, copies source. CMD runs `npm install` (to handle volume mount overwrites) then `npm run dev -- --host` to expose Vite dev server. |
+
+### Dashboard — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `src/api/client.js` | Added 2 functions: `sendDialogue(npcId, playerMessage, playerId)` calls `POST /dialogue/{npc_id}`, `getDialogueHistory(npcId)` calls `GET /dialogue/{npc_id}/history`. Default `playerId` is `"player_001"` matching seed data. |
+| `src/App.jsx` | Added `Conversation` import, `/conversation` route, and replaced grayed-out "Live NPC State" placeholder text with an active "Conversation" `NavLink`. |
+
+### Infrastructure — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `docker-compose.yml` | Added `dashboard` service: builds from `dashboard/Dockerfile`, exposes port 5173, volume-mounts `./dashboard:/app` with anonymous volume for `node_modules` (prevents host OS binary conflicts), sets `VITE_API_URL` env var, depends on `backend` service. Removed obsolete `version: "3.8"` attribute. |
+| `dashboard/Dockerfile` | Created Node.js 18 Alpine-based Dockerfile with npm install caching and Vite dev server startup. |
+
+### Ollama Setup Guide
+
+#### What is Ollama?
+
+Ollama is a local LLM runtime that downloads, manages, and serves AI models directly on your machine. It exposes a simple HTTP API at `http://localhost:11434` that the backend calls to generate NPC dialogue. All processing happens on your GPU — no cloud, no API keys, no data leaves your machine.
+
+#### Installation Steps
+
+1. **Install Ollama**
+   - Download from [ollama.com/download](https://ollama.com/download) or run:
+     ```bash
+     winget install Ollama.Ollama
+     ```
+
+2. **Pull the Phi-3 model** (~2.3 GB download, one-time)
+   ```bash
+   ollama pull phi3
+   ```
+
+3. **Verify it works**
+   ```bash
+   ollama list
+   # Should show: phi3:latest    2.2 GB
+   ```
+
+4. **Run the project**
+   ```bash
+   docker-compose up --build
+   ```
+   The backend container automatically connects to Ollama on your host machine via `host.docker.internal`.
+
+#### System Requirements for Phi-3
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| GPU VRAM | 2.5 GB | 4+ GB |
+| RAM | 8 GB | 16 GB |
+| Disk | 2.5 GB (model) | 2.5 GB |
+
+Phi-3 runs on CPU if no GPU is available (responses take ~10-15s instead of ~3s).
+
+#### Using a Different Model
+
+To use a different Ollama model (e.g., `llama3`, `mistral`, `gemma2`):
+
+1. Pull it: `ollama pull <model_name>`
+2. Set the env var in `docker-compose.yml`:
+   ```yaml
+   environment:
+     - OLLAMA_MODEL=llama3
+   ```
+
+#### Linux Users
+
+On Linux, `host.docker.internal` may not resolve by default. Add this to the `backend` service in `docker-compose.yml`:
+
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
+
+#### Fine-Tuning (Advanced)
+
+Ollama does not support fine-tuning directly, but you can import fine-tuned models:
+
+1. Fine-tune Phi-3 using [Unsloth](https://github.com/unslothai/unsloth) or [Axolotl](https://github.com/OpenAccess-AI-Collective/axolotl)
+2. Export as GGUF format
+3. Create a `Modelfile`:
+   ```
+   FROM ./my-fine-tuned-phi3.gguf
+   ```
+4. Import into Ollama: `ollama create my-npc-model -f Modelfile`
+5. Set `OLLAMA_MODEL=my-npc-model` in `docker-compose.yml`
+
+### How to test
+
+```bash
+# Full project setup (first time)
+docker-compose up --build
+# Open http://localhost:5173/conversation
+
+# Select any NPC from the dropdown and send a message
+# With Ollama running: AI-generated in-character responses (~3s on GPU)
+# Without Ollama: fallback template responses (instant)
+
+# Test dialogue API directly
+curl -X POST http://localhost:8000/dialogue/elder_01 \
+  -H "Content-Type: application/json" \
+  -d '{"player_message":"What wisdom do you have for me?","player_id":"player_001"}'
+
+# Check dialogue history
+curl http://localhost:8000/dialogue/elder_01/history
+```
+
+---
+
+## Cycle 6 — RAG-Powered Memory Retrieval for Conversations (Proposed) 🔲
+
+**Status:** Proposed
+
+### Problem
+
+The current dialogue system injects the NPC's top 5 memories by importance score into the LLM prompt, regardless of what the player is actually talking about. This means:
+
+- If you say *"I saw bandits near the gate"*, the prompt might include a memory about *"Player gave a silver ring"* — completely irrelevant.
+- The NPC cannot meaningfully recall past events in context. Memories exist in the database but are not semantically matched to the conversation.
+- Previous conversation history (from `dialogue_log`) is not considered at all when generating new responses.
+
+### Proposed Solution — RAG (Retrieval-Augmented Generation)
+
+Replace the naive "top 5 by importance" query with a vector similarity search that finds memories **semantically relevant** to the current player message.
+
+#### Architecture
+
+```
+Player Message: "I saw bandits near the gate"
+        │
+        ▼
+┌─────────────────────┐
+│  Embed player msg    │ ← Ollama /api/embeddings (nomic-embed-text)
+│  into vector         │
+└────────┬────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  ChromaDB search     │ ← Cosine similarity against NPC's memory embeddings
+│  Top-K relevant      │
+└────────┬────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Build prompt with   │ ← Only contextually relevant memories injected
+│  relevant memories   │
+└────────┬────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Phi-3 generates     │ ← NPC response references actual past events
+│  response            │
+└─────────────────────┘
+```
+
+#### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| **ChromaDB** | Lightweight vector database (Python-native, no server needed, stores embeddings alongside memory metadata) |
+| **`nomic-embed-text`** | Ollama-supported embedding model (~274MB). Converts text into 768-dimensional vectors for similarity search |
+| **Memory embedding pipeline** | On memory creation (`POST /memory/`), embed the description and store the vector in ChromaDB |
+| **Conversation retriever** | On dialogue, embed the player message → query ChromaDB for top-K similar memories for that NPC → inject into prompt |
+
+#### What would change
+
+| File | Change |
+|------|--------|
+| `requirements.txt` | Add `chromadb` |
+| `memory_manager.py` | On `add_memory()`, also embed and store in ChromaDB collection keyed by `npc_id` |
+| `routers/dialogue.py` | Replace `db.query(Memory).order_by(importance)` with ChromaDB vector similarity search. Optionally also embed and search recent `dialogue_log` entries for conversation continuity |
+| `seed.py` | Embed all seed memories into ChromaDB on initial seed |
+| `docker-compose.yml` | Pull `nomic-embed-text` model on backend startup or document as setup step |
+
+#### Example Impact
+
+**Before (current):**
+> Player: "Remember when I helped fix the lantern?"  
+> NPC prompt includes: top 5 memories by importance (may not include the lantern memory)  
+> NPC response: generic
+
+**After (with RAG):**
+> Player: "Remember when I helped fix the lantern?"  
+> RAG retrieves: "Player helped repair a broken watch post lantern" (0.92 similarity)  
+> NPC response: "Aye, I remember well. That lantern still burns bright thanks to you."
+
+#### Setup for contributors
+
+```bash
+# Pull the embedding model (one-time, ~274MB)
+ollama pull nomic-embed-text
+
+# ChromaDB installs as a Python pip package, no server needed
+pip install chromadb
+```
+
+---

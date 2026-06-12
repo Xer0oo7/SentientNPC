@@ -45,6 +45,18 @@ perception_eng.set_sim_engine(engine)
 async def lifespan(app: FastAPI):
     # Startup
     init_db()
+    
+    # Auto-seed if database is empty
+    from database import SessionLocal, NPC
+    from seed import seed
+    db = SessionLocal()
+    try:
+        if db.query(NPC).count() == 0:
+            logger.info("Database is empty. Running initial seed...")
+            seed()
+    finally:
+        db.close()
+
     simulation_router.set_engine(engine, event_bus, memory_mgr)
     perception_router.set_perception(world, perception_eng, engine)
     logger.info("SentientNPC backend ready (tick_interval=%dms)", int(engine.tick_interval * 1000))
