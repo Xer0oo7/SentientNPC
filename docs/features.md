@@ -366,3 +366,41 @@ curl -X POST http://localhost:8000/simulation/inject \
 
 ---
 
+## Cycle 5 — Behavior Tree Engine + Decision Trace Visibility (Week 5) ✅
+
+**Date:** 2026-06-14  
+**Status:** Complete
+
+### What was built
+
+Composable behavior tree decision selection layered on top of the existing FSM, plus a shared decision context builder and a traceable decision path exposed through the simulation state endpoint.
+
+### Backend — New Files
+
+| File | What it does |
+|------|-------------|
+| `behaviour_tree.py` | Behavior tree primitives for NPC decisions. Defines `Selector`, `Sequence`, `Condition`, and `Action` nodes plus `DecisionOutcome` trace results. Includes event-specific trees for common event types such as `player_stole`, `player_attacked_ally`, `sound_heard`, and `vision_spotted`. |
+| `decision_context.py` | Builds a per-event decision context from NPC personality, emotion, FSM state, reputation, player relationship, recent memories, world position, and nearby entities. Exposes helpers for trait checks and recent-memory queries used by BT predicates. |
+| `tests/test_behaviour_tree.py` | Unit tests for BT branch selection, fallback behavior, and context-aware action evaluation. |
+
+### Backend — Modified Files
+
+| File | What changed |
+|------|-------------|
+| `simulation_engine.py` | Routes action selection through the BT evaluator when a decision context is available, preserves the FSM fallback path, and stores the latest decision trace per NPC for inspection. |
+| `models.py` | Expanded `DecisionStateRead` to include `decision_trace` so the API can return the evaluated BT path. |
+| `routers/simulation.py` | `GET /simulation/state/{npc_id}` now includes the last decision trace alongside FSM state, emotion, and latest processed event data. |
+
+### New API Behavior
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/simulation/state/{npc_id}` | Returns the current FSM state, emotion, last processed event/action, available states, and the most recent BT decision trace. |
+
+### Validation
+
+- Behavior tree tests passed alongside the existing FSM and core test suites.
+- The new BT layer preserves the FSM fallback path for generic observe actions while allowing explicit BT-selected actions to win.
+
+---
+
