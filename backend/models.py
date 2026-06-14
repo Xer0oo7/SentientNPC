@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -194,6 +194,7 @@ class DecisionStateRead(BaseModel):
     last_action_taken: Optional[str] = None
     last_tick: Optional[int] = None
     available_states: list[str]
+    decision_trace: list[dict[str, Any]] = Field(default_factory=list)
 
 
 # ── Perception Models ─────────────────────────────────────────────────────────

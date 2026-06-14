@@ -33,6 +33,8 @@ from event_bus import (
     EventBus,
     SimEvent,
 )
+from behaviour_tree import DecisionOutcome, evaluate_tree
+from decision_context import DecisionContext, build_decision_context
 from fsm import normalize_state, resolve_state_action, transition_state
 from memory_manager import MemoryManager
 from perception import SOUND_EVENTS
@@ -130,6 +132,8 @@ def _get_npc_personality(npc_id: str) -> dict[str, float]:
 
 def _determine_action(
     event_type: str, personality: dict[str, float]
+    ,
+    context: DecisionContext | None = None,
 ) -> str:
     """Pick an action based on event type and NPC personality traits.
 
@@ -137,18 +141,36 @@ def _determine_action(
     returns action_true. If no rule's threshold is met, the last rule's
     action_false is returned as the fallback.
     """
+    result = _evaluate_decision(event_type, personality, context=context)
+    return result.action or "observe"
+
+
+def _evaluate_decision(
+    event_type: str,
+    personality: dict[str, float],
+    context: DecisionContext | None = None,
+) -> DecisionOutcome:
+    """Evaluate the BT path when available, otherwise fall back to the table."""
+
+    if context is not None:
+        return evaluate_tree(event_type, context)
+
     rules = ACTION_RULES.get(event_type)
     if not rules:
-        return "observe"
+        return DecisionOutcome(success=True, action="observe", reason="no rule matched", winning_node="default_observe")
 
     fallback = "observe"
+    reason = "no rule matched"
+    winning_node = "action_table"
     for trait, threshold, action_true, action_false in rules:
         trait_value = personality.get(trait, 50)
         if trait_value >= threshold:
-            return action_true
+            return DecisionOutcome(success=True, action=action_true, reason=f"{trait} >= {threshold}", winning_node=f"{trait}_true")
         fallback = action_false
+        reason = f"{trait} < {threshold}"
+        winning_node = f"{trait}_false"
 
-    return fallback
+    return DecisionOutcome(success=True, action=fallback, reason=reason, winning_node=winning_node)
 
 
 def _determine_emotion_shift(
@@ -246,6 +268,7 @@ class SimulationEngine:
         # World state and perception engine (Cycle 2)
         self.world = world
         self.perception_engine = perception_engine
+        self._decision_traces: dict[str, dict[str, Any]] = {}
 
     @property
     def npc_ids(self) -> list[str]:
@@ -270,6 +293,13 @@ class SimulationEngine:
             }
             for e in sorted(q)
         ]
+
+    def get_last_decision_trace(self, npc_id: str) -> list[dict[str, Any]]:
+        """Return the last recorded decision trace for an NPC."""
+        trace = self._decision_traces.get(npc_id)
+        if trace is None:
+            return []
+        return trace.get("trace", [])
 
     def enqueue_event(
         self,
@@ -438,14 +468,32 @@ class SimulationEngine:
         personality = _get_npc_personality(npc_id)
         current_state = _get_npc_fsm_state(npc_id)
         current_emotion = _get_npc_emotion(npc_id)
+        decision_context = build_decision_context(
+            npc_id=npc_id,
+            event_type=event.event_type,
+            description=event.description,
+            priority=event.priority,
+            importance=event.importance if event.importance is not None else EVENT_IMPORTANCE.get(event.event_type, 0.3),
+            location=event.location,
+            memory_manager=self.memory_manager,
+            world=self.world,
+        )
         transition = transition_state(current_state, event.event_type, personality, current_emotion)
         next_state = transition.next_state
         if next_state != current_state:
             _update_npc_fsm_state(npc_id, next_state)
 
-        action = _determine_action(event.event_type, personality)
-        if action == "observe":
+        decision_result = _evaluate_decision(event.event_type, personality, context=decision_context)
+        action = decision_result.action or "observe"
+        if decision_result.winning_node == "default_observe" or action == "observe" and decision_result.winning_node is None:
             action = resolve_state_action(next_state, action)
+
+        self._decision_traces[npc_id] = {
+            "tick": self.tick_count,
+            "event_type": event.event_type,
+            "action": action,
+            "trace": decision_result.trace,
+        }
 
         # 3. Check for emotion shift
         emotion_shift = _determine_emotion_shift(event.event_type, current_emotion)
@@ -478,12 +526,14 @@ class SimulationEngine:
         self._persist_event(sim_event)
 
         logger.debug(
-            "Tick %d | %s | %s → %s (emotion: %s)",
+            "Tick %d | %s | %s → %s (state=%s, emotion=%s, trace=%s)",
             self.tick_count,
             npc_id,
             event.event_type,
             action,
+            next_state,
             emotion_shift or "unchanged",
+            self._decision_traces[npc_id]["trace"],
         )
 
     @staticmethod
