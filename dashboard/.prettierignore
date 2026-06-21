@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+.next
+out
+.cache
+*.min.js
+*.min.css

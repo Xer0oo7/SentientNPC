@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\""
   },
   "dependencies": {
     "@vitejs/plugin-react": "4.3.3",
@@ -19,7 +22,11 @@
     "tailwindcss": "3.4.13"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "autoprefixer": "10.4.20",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react": "^7.34.0",
+    "prettier": "^3.2.0",
     "postcss": "8.4.47",
     "vite": "5.4.11"
   }

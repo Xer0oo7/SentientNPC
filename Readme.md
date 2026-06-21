@@ -4,7 +4,7 @@
 > *NPCs that remember, learn, adapt, and feel.*
  
 [![Unity](https://img.shields.io/badge/Unity-2022.3%20LTS-black?logo=unity)](https://unity.com/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://sqlite.org/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
@@ -105,5 +105,46 @@ SentientNPC is a pure AI simulation — no game wrapper, no gameplay loop. It is
 **Local LLM dialogue** puts this project in conversation with companies like Inworld AI, Convai, and NVIDIA ACE — the frontier of real-time AI-driven characters.
  
 **Simulation-first** means every module is testable, measurable, and visible through the analytics dashboard — no art, no level design, just pure AI systems running in a sandbox.
+
+---
+
+## Quick Start
+
+### Prerequisites
+- **Python 3.13+** with pip
+- **Node.js 18+** with npm
+- **Docker & Docker Compose** (optional, for containerized deployment)
+
+### Backend Setup
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+python -m pytest               # Run tests
+uvicorn main:app --reload      # Start dev server (http://localhost:8000)
+```
+
+### Dashboard Setup
+```bash
+cd dashboard
+npm install
+npm run dev                    # Vite dev server (http://localhost:5173)
+npm run lint                   # Check code with ESLint
+npm run format                 # Format code with Prettier
+```
+
+### Docker (Optional)
+```bash
+docker-compose up --build
+# Backend: http://localhost:8000
+# Swagger docs: http://localhost:8000/docs
+```
+
+### Verify Setup
+- Health check: `curl http://localhost:8000/health`
+- API docs: Open `http://localhost:8000/docs` in browser
+- Dashboard: Open `http://localhost:5173` in browser
 
 ---
