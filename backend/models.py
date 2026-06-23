@@ -140,6 +140,7 @@ class DialogueResponse(BaseModel):
     response: str
     emotion: str
     relationship_score: float
+    relationship_delta: int = 0
 
 
 class DialogueLogRead(BaseModel):

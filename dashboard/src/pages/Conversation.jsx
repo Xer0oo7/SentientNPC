@@ -34,6 +34,7 @@ export default function Conversation() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [liveRelScore, setLiveRelScore] = useState(null);
   const messagesEndRef = useRef(null);
 
   // Load NPC list on mount
@@ -87,6 +88,7 @@ export default function Conversation() {
     setSelectedNpc(npc || null);
     setMessages([]);
     setError("");
+    setLiveRelScore(null);
   }
 
   async function handleSend(e) {
@@ -114,13 +116,15 @@ export default function Conversation() {
           timestamp: new Date().toISOString(),
           emotion: response.emotion,
           relationship_score: response.relationship_score,
+          relationship_delta: response.relationship_delta,
         },
       ]);
-      // Update selected NPC's emotion from response
+      // Update selected NPC's emotion and relationship from response
       setSelectedNpc((prev) => ({
         ...prev,
         emotion: response.emotion,
       }));
+      setLiveRelScore(response.relationship_score);
     } catch {
       setError("Failed to get response. Is the backend running?");
     } finally {
@@ -222,6 +226,18 @@ export default function Conversation() {
                             title={msg.emotion}
                           />
                         )}
+                        {msg.relationship_delta != null && msg.relationship_delta !== 0 && (
+                          <span
+                            className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                            style={{
+                              backgroundColor: msg.relationship_delta > 0 ? "#dcfce7" : "#fee2e2",
+                              color: msg.relationship_delta > 0 ? "#166534" : "#991b1b",
+                            }}
+                            title={`Relationship ${msg.relationship_delta > 0 ? "improved" : "worsened"}`}
+                          >
+                            {msg.relationship_delta > 0 ? "+" : ""}{msg.relationship_delta}
+                          </span>
+                        )}
                       </div>
                     )}
                     {msg.text}
@@ -305,11 +321,20 @@ export default function Conversation() {
               <h4 className="text-xs font-semibold uppercase tracking-wide text-stone-500">
                 Relationship
               </h4>
-              <div className="mt-2 text-2xl font-bold text-stone-950">
-                {selectedNpc.reputation >= 0 ? "+" : ""}
-                {selectedNpc.reputation}
-              </div>
-              <div className="mt-1 text-xs text-stone-500">Reputation score</div>
+              {(() => {
+                const score = liveRelScore != null ? liveRelScore : selectedNpc.reputation;
+                const color = score > 25 ? "#166534" : score < -25 ? "#991b1b" : "#1c1917";
+                return (
+                  <>
+                    <div className="mt-2 text-2xl font-bold" style={{ color }}>
+                      {score >= 0 ? "+" : ""}{score}
+                    </div>
+                    <div className="mt-1 text-xs text-stone-500">
+                      Relationship score
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Zone */}
