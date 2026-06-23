@@ -150,4 +150,19 @@ export async function getRecentPerceptionEvents(limit = 50) {
   return response.data;
 }
 
+// ── Dialogue ──
+
+export async function sendDialogue(npcId, playerMessage, playerId = "player_001") {
+  const response = await api.post(`/dialogue/${npcId}`, {
+    player_message: playerMessage,
+    player_id: playerId,
+  });
+  return response.data;
+}
+
+export async function getDialogueHistory(npcId) {
+  const response = await api.get(`/dialogue/${npcId}/history`);
+  return response.data;
+}
+
 export default api;

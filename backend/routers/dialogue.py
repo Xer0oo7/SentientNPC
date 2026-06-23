@@ -1,4 +1,5 @@
 import json
+import os
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,8 +12,8 @@ from routers.relationship import relationship_label
 
 router = APIRouter(tags=["dialogue"])
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3"
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi3")
 
 
 def npc_role_from_name(name: str) -> str:

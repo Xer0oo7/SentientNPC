@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router-dom";
 
+import Conversation from "./pages/Conversation.jsx";
 import NPCDetail from "./pages/NPCDetail.jsx";
 import Overview from "./pages/Overview.jsx";
 import Perception from "./pages/Perception.jsx";
@@ -32,7 +33,7 @@ export default function App() {
               <NavLink to="/">Overview</NavLink>
               <NavLink to="/simulation">Simulation</NavLink>
               <NavLink to="/perception">Perception</NavLink>
-              <span className="text-sm text-stone-400">Live NPC State</span>
+              <NavLink to="/conversation">Conversation</NavLink>
             </nav>
           </div>
         </header>
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/npc/:id" element={<NPCDetail />} />
             <Route path="/simulation" element={<Simulation />} />
             <Route path="/perception" element={<Perception />} />
+            <Route path="/conversation" element={<Conversation />} />
           </Routes>
         </main>
       </div>
