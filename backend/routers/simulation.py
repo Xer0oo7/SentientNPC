@@ -106,6 +106,7 @@ def decision_state(npc_id: str, db: Session = Depends(get_db)):
             "last_action_taken": None,
             "last_tick": None,
             "available_states": list(FSM_STATES),
+            "decision_trace": [],
         }
 
     latest_event = (
@@ -123,6 +124,7 @@ def decision_state(npc_id: str, db: Session = Depends(get_db)):
         "last_action_taken": latest_event.action_taken if latest_event else None,
         "last_tick": latest_event.tick if latest_event else None,
         "available_states": list(FSM_STATES),
+        "decision_trace": _engine.get_last_decision_trace(npc_id) if _engine else [],
     }
 
 
