@@ -31,7 +31,7 @@ export default function WorldMap({
   const containerRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ w: 600, h: 600 });
 
-  // Resize observer
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -47,7 +47,7 @@ export default function WorldMap({
     return () => obs.disconnect();
   }, []);
 
-  // Convert world coordinates to canvas coordinates
+
   const worldToCanvas = useCallback((wx, wz) => {
     const { w, h } = canvasSize;
     const pad = 30;
@@ -75,7 +75,7 @@ export default function WorldMap({
     return (worldRadius / rangeX) * (w - 2 * pad);
   }, [canvasSize]);
 
-  // Canvas click handler
+
   const handleCanvasClick = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -83,7 +83,7 @@ export default function WorldMap({
     const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const sy = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-    // Check if clicked on an entity
+
     for (const entity of entities) {
       const { cx, cy } = worldToCanvas(entity.x, entity.z);
       const dist = Math.sqrt((sx - cx) ** 2 + (sy - cy) ** 2);
@@ -93,12 +93,12 @@ export default function WorldMap({
       }
     }
 
-    // Otherwise: map click (move player)
+
     const { wx, wz } = canvasToWorld(sx, sy);
     onMapClick(wx, wz);
   }, [entities, worldToCanvas, canvasToWorld, onEntityClick, onMapClick]);
 
-  // Draw everything
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -113,11 +113,11 @@ export default function WorldMap({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, canvasSize.w, canvasSize.h);
 
-    // Background
+
     ctx.fillStyle = "#1a1a2e";
     ctx.fillRect(0, 0, canvasSize.w, canvasSize.h);
 
-    // Grid lines
+
     ctx.strokeStyle = "rgba(255,255,255,0.05)";
     ctx.lineWidth = 0.5;
     for (let wx = -60; wx <= 60; wx += 10) {
@@ -135,12 +135,12 @@ export default function WorldMap({
       ctx.stroke();
     }
 
-    // Draw zones
+
     for (const [zoneId, zoneDef] of Object.entries(ZONES)) {
       const { cx, cy } = worldToCanvas(zoneDef.x, zoneDef.z);
       const r = worldToCanvasRadius(zoneDef.radius);
 
-      // Zone area
+
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fillStyle = zoneDef.color + "18";
@@ -151,14 +151,14 @@ export default function WorldMap({
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Zone label
+
       ctx.fillStyle = zoneDef.color + "90";
       ctx.font = "bold 10px Inter, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(zoneDef.label, cx, cy + r + 14);
     }
 
-    // Draw FOV cone for selected NPC
+
     if (fovData && selectedNpcId) {
       const { cx, cy } = worldToCanvas(fovData.x, fovData.z);
       const visionR = worldToCanvasRadius(fovData.vision_range);
@@ -166,7 +166,7 @@ export default function WorldMap({
       const facingRad = (-fovData.facing_angle + 90) * (Math.PI / 180);
       const halfFov = (fovData.vision_fov / 2) * (Math.PI / 180);
 
-      // Hearing radius (dashed circle)
+
       ctx.beginPath();
       ctx.arc(cx, cy, hearingR, 0, Math.PI * 2);
       ctx.strokeStyle = "rgba(251, 191, 36, 0.25)";
@@ -175,7 +175,7 @@ export default function WorldMap({
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Vision cone
+
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, visionR, facingRad - halfFov, facingRad + halfFov);
@@ -190,7 +190,7 @@ export default function WorldMap({
       ctx.stroke();
     }
 
-    // Draw sound ripples
+
     for (const ripple of soundRipples) {
       const { cx, cy } = worldToCanvas(ripple.x, ripple.z);
       const maxR = worldToCanvasRadius(ripple.radius || 30);
@@ -205,14 +205,14 @@ export default function WorldMap({
       ctx.stroke();
     }
 
-    // Draw entities
+
     for (const entity of entities) {
       const { cx, cy } = worldToCanvas(entity.x, entity.z);
       const isSelected = entity.id === selectedNpcId;
       const color = ENTITY_COLORS[entity.entity_type] || "#94a3b8";
       const radius = entity.entity_type === "player" ? 8 : 6;
 
-      // Selection glow
+
       if (isSelected) {
         ctx.beginPath();
         ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
@@ -223,7 +223,7 @@ export default function WorldMap({
         ctx.stroke();
       }
 
-      // Entity dot
+
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fillStyle = color;
@@ -232,7 +232,7 @@ export default function WorldMap({
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Facing direction arrow (for NPCs and player)
+
       if (entity.entity_type === "npc" || entity.entity_type === "player") {
         const angle = (-entity.facing_angle + 90) * (Math.PI / 180);
         const arrowLen = radius + 6;
@@ -246,7 +246,7 @@ export default function WorldMap({
         ctx.stroke();
       }
 
-      // Entity label
+
       ctx.fillStyle = "#e2e8f0";
       ctx.font = `${isSelected ? "bold " : ""}10px Inter, sans-serif`;
       ctx.textAlign = "center";
@@ -254,7 +254,7 @@ export default function WorldMap({
       ctx.fillText(label, cx, cy - radius - 6);
     }
 
-    // Legend
+
     const legendX = 12;
     let legendY = canvasSize.h - 60;
     ctx.font = "9px Inter, sans-serif";

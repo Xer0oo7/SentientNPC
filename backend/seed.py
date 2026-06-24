@@ -251,11 +251,6 @@ def seed():
             )
 
         db.commit()
-        npc_count = len(NPCS)
-        mem_count = sum(len(n["memories"]) for n in NPCS)
-        print(f"Seed complete: {npc_count} NPCs, {mem_count} memories, and {npc_count} relationships created.")
-        print(f"NPCs: {', '.join(n['name'] + ' (' + n['id'] + ')' for n in NPCS)}")
-        print(f"Player entity: {PLAYER['id']} at ({PLAYER['pos_x']}, {PLAYER['pos_z']})")
     finally:
         db.close()
 
