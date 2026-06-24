@@ -25,8 +25,8 @@ export default function QueueVisualization() {
       try {
         const data = await getAllQueueSnapshots();
         setQueues(data);
-      } catch {
-        // Backend not available
+      } catch (err) {
+        console.warn("Queue API error:", err);
       }
     }
 

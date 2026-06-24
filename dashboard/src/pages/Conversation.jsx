@@ -37,7 +37,7 @@ export default function Conversation() {
   const [liveRelScore, setLiveRelScore] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // Load NPC list on mount
+
   useEffect(() => {
     async function load() {
       try {
@@ -50,13 +50,13 @@ export default function Conversation() {
     load();
   }, []);
 
-  // Load dialogue history when NPC changes
+
   useEffect(() => {
     if (!selectedNpc) return;
     async function loadHistory() {
       try {
         const history = await getDialogueHistory(selectedNpc.id);
-        // API returns newest first, reverse for chronological display
+
         const formatted = history.reverse().flatMap((entry) => [
           {
             role: "player",
@@ -78,7 +78,7 @@ export default function Conversation() {
     loadHistory();
   }, [selectedNpc]);
 
-  // Auto-scroll to bottom on new messages
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -100,7 +100,7 @@ export default function Conversation() {
     setSending(true);
     setError("");
 
-    // Optimistically add player message
+
     setMessages((prev) => [
       ...prev,
       { role: "player", text: playerMsg, timestamp: new Date().toISOString() },
@@ -119,7 +119,7 @@ export default function Conversation() {
           relationship_delta: response.relationship_delta,
         },
       ]);
-      // Update selected NPC's emotion and relationship from response
+
       setSelectedNpc((prev) => ({
         ...prev,
         emotion: response.emotion,
@@ -132,7 +132,7 @@ export default function Conversation() {
     }
   }
 
-  // Radar chart data for sidebar
+
   const radarData = selectedNpc
     ? {
         labels: ["aggressive", "friendly", "greedy", "bravery", "curiosity", "loyalty"],

@@ -23,20 +23,20 @@ export default function EventFeed({ maxEvents = 100 }) {
   const scrollRef = useRef(null);
   const wsRef = useRef(null);
 
-  // Load recent events via REST on mount
+
   useEffect(() => {
     async function loadHistory() {
       try {
         const history = await getRecentEvents(maxEvents);
         setEvents(history);
-      } catch {
-        // Backend may not be running
+      } catch (err) {
+        console.warn("EventFeed API error:", err);
       }
     }
     loadHistory();
   }, [maxEvents]);
 
-  // WebSocket connection
+
   useEffect(() => {
     function connect() {
       const ws = createSimulationWebSocket();
@@ -51,14 +51,14 @@ export default function EventFeed({ maxEvents = 100 }) {
             const updated = [event, ...prev];
             return updated.slice(0, maxEvents);
           });
-        } catch {
-          // Ignore malformed messages
+        } catch (err) {
+          console.warn("EventFeed WS parse error:", err);
         }
       };
 
       ws.onclose = () => {
         setConnected(false);
-        // Reconnect after 2 seconds
+
         setTimeout(connect, 2000);
       };
 
@@ -77,7 +77,7 @@ export default function EventFeed({ maxEvents = 100 }) {
     };
   }, [maxEvents]);
 
-  // Auto-scroll to top when new events arrive
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
