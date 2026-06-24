@@ -4,7 +4,7 @@
 This document proposes a practical way to implement AI in the current project based on:
 - Existing code in backend and dashboard
 - Existing design docs in Readme.md and docs/
-- Current implementation status (Weeks 1 to 3 complete, Weeks 4 to 9 mostly pending)
+- Current implementation status (Weeks 1 to 5 complete, Weeks 6 to 9 pending)
 
 ## Current State (What already works)
 

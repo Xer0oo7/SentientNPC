@@ -335,11 +335,11 @@ npm run dev                      # opens on localhost:5173
 | Week | Module | Status |
 |---|---|---|
 | 1 | Project scaffold, folder structure, FastAPI + SQLite setup | ✅ Complete |
-| 2 | Memory System (short-term + long-term + importance scoring) | 🔲 Next |
-| 3 | Perception System (vision FOV, hearing, event detection) | 🔲 Planned |
-| 4 | Personality + Relationship + Emotion systems | 🔲 Planned |
-| 5 | FSM + Behaviour Tree decision engine | 🔲 Planned |
-| 6 | GOAP planner | 🔲 Planned |
+| 2 | Memory System (short-term + long-term + importance scoring) | ✅ Complete |
+| 3 | Perception System (vision FOV, hearing, event detection) | ✅ Complete |
+| 4 | FSM Foundation + Decision Visibility | ✅ Complete |
+| 5 | Behavior Tree Engine + Decision Trace Visibility | ✅ Complete |
+| 6 | GOAP planner | 🔲 Next |
 | 7 | LLM dialogue (Ollama integration) | 🔲 Planned |
 | 8 | Analytics dashboard + live WebSocket feed | 🔲 Planned |
 | 9 | Sim stress testing (multi-NPC scenarios) + demo video | 🔲 Planned |

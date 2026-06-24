@@ -84,12 +84,12 @@ Player Input / Game Events
 | 1 | Project scaffold, folder structure, FastAPI + SQLite setup | ✅ Complete |
 | 2 | Simulation Engine + Priority Queues + Memory System + Live Events | ✅ Complete |
 | 3 | Perception System (vision FOV, hearing, spatial world, 7 NPCs) | ✅ Complete |
-| 4 | Personality + Relationship + Emotion systems |  Next |
-| 5 | FSM + Behaviour Tree decision engine |  Planned |
-| 6 | GOAP planner |  Planned |
-| 7 | LLM dialogue (Ollama integration) |  Planned |
-| 8 | Analytics dashboard + live WebSocket feed |  Planned |
-| 9 | Sim stress testing (multi-NPC scenarios) + demo video |  Planned |
+| 4 | FSM Foundation + Decision Visibility | ✅ Complete |
+| 5 | Behavior Tree Engine + Decision Trace Visibility | ✅ Complete |
+| 6 | GOAP planner | 🔲 Next |
+| 7 | LLM dialogue (Ollama integration) | 🔲 Planned |
+| 8 | Analytics dashboard + live WebSocket feed | 🔲 Planned |
+| 9 | Sim stress testing (multi-NPC scenarios) + demo video | 🔲 Planned |
  
 ---
  
